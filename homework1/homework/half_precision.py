@@ -18,13 +18,39 @@ class HalfLinear(torch.nn.Linear):
         Feel free to set self.requires_grad_ to False, we will not backpropagate through this layer.
         """
         # TODO: Implement me
-        raise NotImplementedError()
+        #raise NotImplementedError()
+        def __init__(
+            self,
+            in_features: int,
+            out_features: int,
+            bias: bool = True,
+        ) -> None:
+            super().__init__(
+                in_features,
+                out_features,
+                bias=bias,
+                dtype=torch.float16,
+            )
+
+            # Disable backprop through half-precision base weights
+            self.requires_grad_(False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Hint: Use the .to method to cast a tensor to a different dtype (i.e. torch.float16 or x.dtype)
         # The input and output should be of x.dtype = torch.float32
         # TODO: Implement me
-        raise NotImplementedError()
+        #raise NotImplementedError()
+        # Input is float32 -> cast to float16
+        x16 = x.to(torch.float16)
+
+        # Do not backprop through fp16 weights
+        weight = self.weight.detach()
+        bias = self.bias.detach() if self.bias is not None else None
+
+        y16 = torch.nn.functional.linear(x16, weight, bias)
+
+        # Return float32 output
+        return y16.to(x.dtype)
 
 
 class HalfBigNet(torch.nn.Module):
