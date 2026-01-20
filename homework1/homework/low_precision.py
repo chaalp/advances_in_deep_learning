@@ -17,8 +17,11 @@ def block_quantize_4bit(x: torch.Tensor, group_size: int = 16) -> tuple[torch.Te
 
     x = x.view(-1, group_size)
     normalization = x.abs().max(dim=-1, keepdim=True).values
+    normalization = normalization.clamp_min(1e-6)
     x_norm = (x + normalization) / (2 * normalization)
-    x_quant_8 = (x_norm * 15).round().to(torch.int8)
+    x_norm = x_norm.clamp(0.0, 1.0)
+    #x_quant_8 = (x_norm * 15).round().to(torch.int8)
+    x_quant_8 = (x_norm * 15).round().clamp(0, 15).to(torch.int8)
     x_quant_4 = (x_quant_8[:, ::2] & 0xF) + ((x_quant_8[:, 1::2] & 0xF) << 4)
     return x_quant_4, normalization.to(torch.float16)
 
