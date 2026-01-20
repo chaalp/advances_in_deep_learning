@@ -19,21 +19,14 @@ class HalfLinear(torch.nn.Linear):
         """
         # TODO: Implement me
         #raise NotImplementedError()
-        def __init__(
-            self,
-            in_features: int,
-            out_features: int,
-            bias: bool = True,
-        ) -> None:
-            super().__init__(
-                in_features,
-                out_features,
-                bias=bias,
-                dtype=torch.float16,
-            )
-
-            # Disable backprop through half-precision base weights
-            self.requires_grad_(False)
+        super().__init__(
+            in_features,
+            out_features,
+            bias=bias,
+            dtype=torch.float16,
+        )
+        # Disable backprop through half-precision base weights
+        self.requires_grad_(False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Hint: Use the .to method to cast a tensor to a different dtype (i.e. torch.float16 or x.dtype)
@@ -64,15 +57,14 @@ class HalfBigNet(torch.nn.Module):
             super().__init__()
             # TODO: Implement me (feel free to copy and reuse code from bignet.py)
             #raise NotImplementedError()
-            def __init__(self, channels: int):
-                super().__init__()
-                self.model = torch.nn.Sequential(
-                    HalfLinear(channels, channels),
-                    torch.nn.ReLU(),
-                    HalfLinear(channels, channels),
-                    torch.nn.ReLU(),
-                    HalfLinear(channels, channels),
-                )
+            super().__init__()
+            self.model = torch.nn.Sequential(
+                HalfLinear(channels, channels),
+                torch.nn.ReLU(),
+                HalfLinear(channels, channels),
+                torch.nn.ReLU(),
+                HalfLinear(channels, channels),
+            )
 
         def forward(self, x: torch.Tensor):
             return self.model(x) + x
@@ -94,7 +86,7 @@ class HalfBigNet(torch.nn.Module):
             LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM),
         )
-        
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
