@@ -1,3 +1,4 @@
+'''
 from pathlib import Path
 
 import torch
@@ -158,4 +159,154 @@ def load(path: Path | None) -> BigNet4Bit:
     net = BigNet4Bit()
     if path is not None:
         net.load_state_dict(torch.load(path, weights_only=True))
+    return net
+'''
+
+from pathlib import Path
+import torch
+
+from .bignet import BIGNET_DIM, LayerNorm
+
+
+def pack_3bit(v: torch.Tensor) -> torch.Tensor:
+    """
+    Pack uint8 values in [0,7] into a uint8 bytearray using 3 bits/value.
+    v must be 1D on CPU or GPU.
+    """
+    assert v.dtype == torch.uint8
+    n = v.numel()
+    out_nbytes = (n * 3 + 7) // 8
+    out = torch.zeros(out_nbytes, dtype=torch.uint8, device=v.device)
+
+    bitpos = torch.arange(n, device=v.device, dtype=torch.int64) * 3
+    byte = bitpos // 8
+    shift = bitpos % 8
+
+    # We may write across 2 bytes when shift > 5
+    out.scatter_add_(0, byte, (v << shift).to(torch.uint8))
+    spill = shift > 5
+    if spill.any():
+        out.scatter_add_(0, byte[spill] + 1, (v[spill] >> (8 - shift[spill])).to(torch.uint8))
+    return out
+
+
+def unpack_3bit(packed: torch.Tensor, n: int) -> torch.Tensor:
+    """
+    Unpack uint8 packed array into uint8 values in [0,7]
+    """
+    assert packed.dtype == torch.uint8
+    bitpos = torch.arange(n, device=packed.device, dtype=torch.int64) * 3
+    byte = bitpos // 8
+    shift = bitpos % 8
+
+    a = (packed[byte] >> shift).to(torch.uint16)
+    b = torch.zeros_like(a)
+    spill = shift > 5
+    if spill.any():
+        b[spill] = (packed[byte[spill] + 1].to(torch.uint16) << (8 - shift[spill]))
+    v = (a | b) & 0x7
+    return v.to(torch.uint8)
+
+
+class Linear3Bit(torch.nn.Module):
+    def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:
+        super().__init__()
+        self._shape = (out_features, in_features)
+
+        # Packed weights: 3 bits per value
+        n = out_features * in_features
+        nbytes = (n * 3 + 7) // 8
+        self.register_buffer("weight_packed", torch.zeros(nbytes, dtype=torch.uint8), persistent=False)
+
+        # Per-row scale (fp16): out_features values
+        self.register_buffer("scale", torch.ones(out_features, dtype=torch.float16), persistent=False)
+
+        # Optional bias: store fp16 to keep memory tiny
+        self.register_buffer("bias_fp16", torch.zeros(out_features, dtype=torch.float16), persistent=False)
+        self._has_bias = bias
+
+        # hook to intercept float32 weight from checkpoint
+        self._register_load_state_dict_pre_hook(Linear3Bit._load_state_dict_pre_hook, with_module=True)
+
+    def _load_state_dict_pre_hook(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+        w_key = f"{prefix}weight"
+        if w_key in state_dict:
+            W = state_dict[w_key].to(torch.float32)  # [out, in]
+            del state_dict[w_key]
+
+            # quantize per row to 3-bit signed levels in [-3..3]
+            out, inn = W.shape
+            # scale = maxabs/3 (avoid div0)
+            maxabs = W.abs().amax(dim=1).clamp_min(1e-8)
+            scale = (maxabs / 3.0).to(torch.float16)
+            self.scale.copy_(scale)
+
+            Wq = torch.round((W / maxabs[:, None]) * 3.0).clamp(-3, 3).to(torch.int16)
+            # store as unsigned 0..7
+            Wu = (Wq + 3).to(torch.uint8).contiguous().view(-1)
+
+            self.weight_packed.copy_(pack_3bit(Wu))
+
+        b_key = f"{prefix}bias"
+        if b_key in state_dict:
+            b = state_dict[b_key].to(torch.float16)
+            del state_dict[b_key]
+            if self._has_bias:
+                self.bias_fp16.copy_(b)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # unpack + dequantize to float16/float32
+        out, inn = self._shape
+        n = out * inn
+        Wu = unpack_3bit(self.weight_packed, n).view(out, inn).to(torch.int16) - 3  # [-3..3]
+        W = (Wu.to(torch.float32) * (self.scale.to(torch.float32)[:, None] / 3.0))
+
+        b = self.bias_fp16.to(torch.float32) if self._has_bias else None
+        y = torch.nn.functional.linear(x.to(torch.float32), W, b)
+        return y.to(x.dtype)
+
+
+class LowerBigNet(torch.nn.Module):
+    class Block(torch.nn.Module):
+        def __init__(self, channels: int):
+            super().__init__()
+            self.model = torch.nn.Sequential(
+                Linear3Bit(channels, channels, bias=True),
+                torch.nn.ReLU(),
+                Linear3Bit(channels, channels, bias=True),
+                torch.nn.ReLU(),
+                Linear3Bit(channels, channels, bias=True),
+            )
+
+        def forward(self, x: torch.Tensor):
+            return self.model(x) + x
+
+    def __init__(self):
+        super().__init__()
+        # dummy param so backward() always has a grad path
+        self._dummy = torch.nn.Parameter(torch.zeros(()))
+
+        self.model = torch.nn.Sequential(
+            self.Block(BIGNET_DIM),
+            LayerNorm(BIGNET_DIM),
+            self.Block(BIGNET_DIM),
+            LayerNorm(BIGNET_DIM),
+            self.Block(BIGNET_DIM),
+            LayerNorm(BIGNET_DIM),
+            self.Block(BIGNET_DIM),
+            LayerNorm(BIGNET_DIM),
+            self.Block(BIGNET_DIM),
+            LayerNorm(BIGNET_DIM),
+            self.Block(BIGNET_DIM),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        y = self.model(x)
+        return y + 0.0 * self._dummy
+
+
+def load(path: Path | None):
+    net = LowerBigNet()
+    if path is not None:
+        net.load_state_dict(torch.load(path, weights_only=True), strict=False)
     return net
