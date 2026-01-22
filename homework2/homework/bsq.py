@@ -169,7 +169,7 @@ class BSQPatchAutoEncoder(PatchAutoEncoder, Tokenizer):
         z_q = self.encode(x)
         x_hat = self.decode(z_q)
 
-        # Monitoring: codebook usage stats in tensorboard
+        # Monitoring codebook usage stats in tensorboard
         with torch.no_grad():
             tokens = self.encode_index(x)  # (B, h, w)
             cnt = torch.bincount(tokens.flatten(), minlength=2 ** self.codebook_bits)

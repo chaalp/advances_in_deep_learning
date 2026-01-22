@@ -129,7 +129,6 @@ class PatchAutoEncoder(torch.nn.Module, PatchAutoEncoderBase):
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             #raise NotImplementedError()
-
             # x: (B, H, W, 3)
             z = self.patchify(x)  # (B, h, w, latent_dim)
             z = hwc_to_chw(z)     # (B, latent_dim, h, w)
