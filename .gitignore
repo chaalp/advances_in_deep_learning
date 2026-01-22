@@ -1,0 +1,18 @@
+# --- datasets / artifacts (do NOT commit) ---
+homework2/data/
+homework2/supertux_data.zip
+homework2/**/*.zip
+
+homework2/checkpoints/
+homework2/logs/
+homework2/outputs/
+
+# model artifacts
+*.pth
+*.ckpt
+*.tfevents*
+
+# python junk
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

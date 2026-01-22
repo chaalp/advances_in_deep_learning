@@ -1,0 +1,11 @@
+homework2/data/
+homework2/*.zip
+homework2/**/*.zip
+*.pth
+tokenized_*.pth
+checkpoints/
+logs/
+outputs/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
