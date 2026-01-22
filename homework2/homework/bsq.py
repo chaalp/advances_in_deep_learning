@@ -46,7 +46,14 @@ class Tokenizer(abc.ABC):
 class BSQ(torch.nn.Module):
     def __init__(self, codebook_bits: int, embedding_dim: int):
         super().__init__()
-        raise NotImplementedError()
+        #raise NotImplementedError()
+
+        self._codebook_bits = codebook_bits
+        self.embedding_dim = embedding_dim
+
+        # Project features down to codebook_bits and back up
+        self.down = torch.nn.Linear(embedding_dim, codebook_bits, bias=False)
+        self.up = torch.nn.Linear(codebook_bits, embedding_dim, bias=False)
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -55,14 +62,21 @@ class BSQ(torch.nn.Module):
         - L2 normalization
         - differentiable sign
         """
-        raise NotImplementedError()
+        #raise NotImplementedError()
+
+        z = self.down(x)
+        z = z / (z.norm(dim=-1, keepdim=True) + 1e-8)   # L2 normalization
+        z = diff_sign(z)                               # {-1, +1} with straight-through grads
+        return z
 
     def decode(self, x: torch.Tensor) -> torch.Tensor:
         """
         Implement the BSQ decoder:
         - A linear up-projection into embedding_dim should suffice
         """
-        raise NotImplementedError()
+        #raise NotImplementedError()
+
+        return self.up(x)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.decode(self.encode(x))
@@ -97,19 +111,41 @@ class BSQPatchAutoEncoder(PatchAutoEncoder, Tokenizer):
 
     def __init__(self, patch_size: int = 5, latent_dim: int = 128, codebook_bits: int = 10):
         super().__init__(patch_size=patch_size, latent_dim=latent_dim)
-        raise NotImplementedError()
+        #raise NotImplementedError()
+
+        super().__init__(patch_size=patch_size, latent_dim=latent_dim)
+        self.codebook_bits = codebook_bits
+        self.bsq = BSQ(codebook_bits=codebook_bits, embedding_dim=latent_dim)
 
     def encode_index(self, x: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError()
+        #raise NotImplementedError()
+
+        # x: (B, H, W, 3) -> tokens: (B, h, w)
+        z = super().encode(x)                 # (B, h, w, latent_dim)
+        return self.bsq.encode_index(z)       # (B, h, w) ints
 
     def decode_index(self, x: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError()
+        #raise NotImplementedError()
+
+        # x: (B, h, w) -> image: (B, H, W, 3)
+        z = self.bsq.decode_index(x)          # (B, h, w, latent_dim)
+        return super().decode(z)              # (B, H, W, 3)
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError()
+        #raise NotImplementedError()
+
+        # Return quantized *features* (still latent_dim) so decode() can reconstruct
+        z = super().encode(x)                 # (B, h, w, latent_dim)
+        codes = self.bsq.encode(z)            # (B, h, w, codebook_bits) in {-1,+1}
+        z_q = self.bsq.decode(codes)          # (B, h, w, latent_dim)
+        return z_q
 
     def decode(self, x: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError()
+        #raise NotImplementedError()
+
+        # x is quantized latent features (B, h, w, latent_dim)
+        return super().decode(x)
+
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """
@@ -127,4 +163,22 @@ class BSQPatchAutoEncoder(PatchAutoEncoder, Tokenizer):
                 ...
               }
         """
-        raise NotImplementedError()
+        #raise NotImplementedError()
+
+        # Reconstruct
+        z_q = self.encode(x)
+        x_hat = self.decode(z_q)
+
+        # Monitoring: codebook usage stats in tensorboard
+        with torch.no_grad():
+            tokens = self.encode_index(x)  # (B, h, w)
+            cnt = torch.bincount(tokens.flatten(), minlength=2 ** self.codebook_bits)
+
+            additional = {
+                "cb0": (cnt == 0).float().mean(),     # fraction of unused codes
+                "cb1": (cnt <= 1).float().mean(),
+                "cb2": (cnt <= 2).float().mean(),
+                "cb5": (cnt <= 5).float().mean(),
+            }
+
+        return x_hat, additional
