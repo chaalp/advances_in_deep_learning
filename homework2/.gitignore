@@ -9,3 +9,4 @@ outputs/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+!ca37464.zip
