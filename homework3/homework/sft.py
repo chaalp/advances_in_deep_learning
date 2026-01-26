@@ -141,6 +141,8 @@ def train_model(
         task_type="CAUSAL_LM",
     )
     llm.model = get_peft_model(llm.model, lora_cfg)
+    llm.model.print_trainable_parameters()
+
     llm.model.config.use_cache = False
     
     # Fix for gradient_checkpointing + LoRA on GPU (recommended by README)
