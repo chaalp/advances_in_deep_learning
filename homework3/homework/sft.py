@@ -135,7 +135,8 @@ def train_model(
         r=lora_r,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
-        target_modules="all-linear",
+        #target_modules="all-linear",
+        target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"]
         bias="none",
         task_type="CAUSAL_LM",
     )
