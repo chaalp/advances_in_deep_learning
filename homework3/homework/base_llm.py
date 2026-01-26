@@ -25,12 +25,21 @@ class BaseLLM:
         messages = [
             {
                 "role": "system", 
-                "content": "You are a helpful assistant that performs unit conversions. Provide the final numeric result inside <answer> tags."
+                "content": (
+                    "You are a helpful assistant that performs unit conversions. "
+                    "Show brief reasoning, then provide the final numeric result inside <answer> tags."
+                )
             },
-            {
-                "role": "user", 
-                "content": f"{question} Answer with <answer>...</answer>."
-            }
+            # Shot 1: Integer conversion
+            {"role": "user", "content": "How many meters are there in 6 km?"},
+            {"role": "assistant", "content": "1 km = 1000 m, so 6 * 1000 = 6000. <answer>6000</answer>"},
+            
+            # Shot 2: Decimal/Precision handling
+            {"role": "user", "content": "Convert 2.5 inches to centimeters."},
+            {"role": "assistant", "content": "1 inch is 2.54 cm. 2.5 * 2.54 = 6.35. <answer>6.35</answer>"},
+            
+            # The actual question
+            {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
         ]
     
         # apply_chat_template adds the necessary special tokens for SmolLM2
