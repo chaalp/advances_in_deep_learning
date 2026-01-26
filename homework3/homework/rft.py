@@ -71,8 +71,7 @@ def train_model(
         r=lora_r,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
-        #target_modules="all-linear",
-        target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
+        target_modules="all-linear",
         bias="none",
         task_type="CAUSAL_LM",
     )
@@ -110,19 +109,19 @@ def train_model(
         output_dir=output_dir,
         logging_dir=output_dir,
         report_to="tensorboard",
-        learning_rate=learning_rate,
-        num_train_epochs=num_train_epochs,
-        per_device_train_batch_size=per_device_train_batch_size,
-        gradient_accumulation_steps=gradient_accumulation_steps,
-        warmup_ratio=warmup_ratio,
-        gradient_checkpointing=True,
-        logging_steps=logging_steps,
-        save_strategy=save_strategy,
-        save_total_limit=2,
-        remove_unused_columns=False,
+        learning_rate=1e-4,              # Slightly higher for small model
+        num_train_epochs=3,              # 3-5 is usually sufficient
+        per_device_train_batch_size=32,
+        gradient_accumulation_steps=1,
+        warmup_ratio=0.05,               # 5% warmup
+        weight_decay=0.01,               # Added for generalization
+        gradient_checkpointing=False,    # Disable if VRAM allows for speed
+        bf16=torch.cuda.is_bf16_supported(), # Auto-detect BF16
+        fp16=not torch.cuda.is_bf16_supported(), # Fallback to FP16
+        logging_steps=10,
+        save_strategy="epoch",
+        remove_unused_columns=False,     # Keep for custom dataset
         label_names=["labels"],
-        fp16=False,
-        bf16=False,
         max_grad_norm=1.0,
     )
 

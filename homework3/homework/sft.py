@@ -109,6 +109,8 @@ def train_model(
     Expected usage (from repo root):
         python -m homework.sft train --output_dir homework/sft_model
     """
+    import torch
+    
     from transformers import Trainer, TrainingArguments, default_data_collator
     from peft import LoraConfig, get_peft_model
 
@@ -165,20 +167,19 @@ def train_model(
         output_dir=output_dir,
         logging_dir=output_dir,
         report_to="tensorboard",
-        learning_rate=learning_rate,
-        num_train_epochs=num_train_epochs,
-        per_device_train_batch_size=per_device_train_batch_size,
-        gradient_accumulation_steps=gradient_accumulation_steps,
-        warmup_ratio=warmup_ratio,
-        weight_decay=weight_decay,
-        gradient_checkpointing=True,
-        logging_steps=logging_steps,
-        save_strategy=save_strategy,
-        save_total_limit=2,
-        remove_unused_columns=False,
+        learning_rate=1e-4,              # Slightly higher for small model
+        num_train_epochs=3,              # 3-5 is usually sufficient
+        per_device_train_batch_size=32,
+        gradient_accumulation_steps=1,
+        warmup_ratio=0.05,               # 5% warmup
+        weight_decay=0.01,               # Added for generalization
+        gradient_checkpointing=False,    # Disable if VRAM allows for speed
+        bf16=torch.cuda.is_bf16_supported(), # Auto-detect BF16
+        fp16=not torch.cuda.is_bf16_supported(), # Fallback to FP16
+        logging_steps=10,
+        save_strategy="epoch",
+        remove_unused_columns=False,     # Keep for custom dataset
         label_names=["labels"],
-        fp16=False,
-        bf16=False,
         max_grad_norm=1.0,
     )
 
