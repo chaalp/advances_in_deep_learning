@@ -14,17 +14,18 @@ class CoTModel(BaseLLM):
             {
                 "role": "system",
                 "content": (
-                    "You are a helpful assistant that solves unit conversion problems. "
-                    "Show brief reasoning, then give the final numeric result inside <answer>...</answer>. "
-                    "Be concise."
+                    "You solve unit conversion questions. "
+                    "Be concise. Show brief reasoning, then output the final numeric result in "
+                    "<answer>...</answer>."
                 ),
             },
             {
                 "role": "assistant",
                 "content": (
                     "Example:\n"
-                    "Question: How many grams are there in 6 kg?\n"
-                    "Reasoning: 1 kg = 1000 g, so 6 * 1000 = <answer>6000</answer>\n"
+                    "Question: How many grams are in 6 kg?\n"
+                    "Reasoning: 1 kg = 1000 g, so 6 * 1000 = 6000.\n"
+                    "Final: <answer>6000</answer>"
                 ),
             },
             {"role": "user", "content": question},
