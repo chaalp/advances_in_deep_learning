@@ -121,10 +121,11 @@ class BaseLLM:
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         gen_kwargs = dict(
-            max_new_tokens=16,  # key speed fix
+            max_new_tokens=64,
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.eos_token_id,
-            do_sample=False,
+            do_sample=True if temperature > 0 else False,
+            temperature=temperature if temperature > 0 else None,
             num_beams=1,
             use_cache=True,
         )
