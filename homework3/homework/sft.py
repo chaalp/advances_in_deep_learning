@@ -32,7 +32,8 @@ def tokenize(tokenizer, question: str, answer: str):
     full = tokenizer(full_text, padding="max_length", truncation=True, max_length=128)
 
     input_ids = full["input_ids"]
-    question_len = len(tokenizer(question)["input_ids"])
+    #question_len = len(tokenizer(question)["input_ids"])
+    question_len = len(tokenizer(question + " ")["input_ids"])
 
     # Create labels: mask out the prompt part
     labels = [-100] * question_len + input_ids[question_len:]
