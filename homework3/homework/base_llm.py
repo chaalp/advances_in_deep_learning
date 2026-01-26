@@ -15,6 +15,7 @@ class BaseLLM:
         self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)
         self.device = device
 
+    '''
     def format_prompt(self, question: str) -> str:
         """
         Take a question and convert it into an input to SmolLM2. The LLM will likely answer much
@@ -25,7 +26,30 @@ class BaseLLM:
         # This MUST match the training string used in rft.py/sft.py
         return f"{question} Answer with <answer>...</answer>."
         #return f"{question}\nReturn ONLY <answer>NUMBER</answer>."
-
+    '''
+    def format_prompt(self, question: str) -> str:
+        """
+        Standardize the prompt using the model's native chat template.
+        """
+        # Define the instruction as a system message to guide the model's behavior
+        messages = [
+            {
+                "role": "system", 
+                "content": "You are a helpful assistant that performs unit conversions. Provide the final numeric result inside <answer> tags."
+            },
+            {
+                "role": "user", 
+                "content": f"{question} Answer with <answer>...</answer>."
+            }
+        ]
+    
+        # apply_chat_template adds the necessary special tokens for SmolLM2
+        return self.tokenizer.apply_chat_template(
+            messages, 
+            tokenize=False, 
+            add_generation_prompt=True
+        )
+    
     '''
     def parse_answer(self, answer: str) -> float:
         """
@@ -44,27 +68,23 @@ class BaseLLM:
     '''
 
     def parse_answer(self, answer: str) -> float:
-        """
-        Parse answer from model output.
-        Supports:
-        - <answer>NUMBER</answer>
-        - plain NUMBER anywhere in the text (fallback)
-        """
         try:
-            # Prefer number after <answer>
-            m = re.search(r"<answer>\s*([-+]?\d*\.?\d+)", answer)
-            if m:
-                return float(m.group(1))
+            # 1. Primary: Extract first number inside <answer> tags
+            tag_match = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
+            if tag_match:
+                val_str = tag_match.group(1).replace(",", "") # Handle commas
+                return float(val_str)
 
-            # Fallback: first numeric token anywhere
-            m2 = re.search(r"([-+]?\d*\.?\d+)", answer)
-            if m2:
-                return float(m2.group(1))
+            # 2. Fallback: Extract the LAST number in the text
+            # This is more likely to be the conclusion than the first number mentioned.
+            all_numbers = re.findall(r"[-+]?[\d,]*\.?\d+", answer)
+            if all_numbers:
+                val_str = all_numbers[-1].replace(",", "")
+                return float(val_str)
 
             return float("nan")
-        except ValueError:
+        except (ValueError, TypeError):
             return float("nan")
-
 
 
     def generate(self, prompt: str) -> str:
