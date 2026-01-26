@@ -169,7 +169,6 @@ def train_model(
         label_names=["labels"], # Common default
         fp16=False,
         bf16=False,
-        gradient_checkpointing=False,
         max_grad_norm=1.0,
     )
 
