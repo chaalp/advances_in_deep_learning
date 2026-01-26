@@ -148,19 +148,20 @@ def train_model(
     llm.model = get_peft_model(llm.model, lora_cfg)
     llm.model.print_trainable_parameters()
 
-    llm.model.config.use_cache = False
+    # 2. Fix for gradient checkpointing + LoRA
+    #if llm.device == "cuda":
+    llm.model.enable_input_require_grads()
 
-    # 2. Ensure the model is in training mode
+    # 3. Ensure the model is in training mode
     llm.model.train()
     
-    # 3. Fix for gradient checkpointing + LoRA
-    if llm.device == "cuda":
-        llm.model.enable_input_require_grads()
-
     # 4. Explicitly ensure LoRA weights are trainable
     for name, param in llm.model.named_parameters():
         if "lora_" in name:
             param.requires_grad = True
+
+    # 5. Disable cache to save memory and avoid warnings during training
+    llm.model.config.use_cache = False
 
     # Training args
     args = TrainingArguments(

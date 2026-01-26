@@ -20,7 +20,9 @@ class BaseLLM:
         better if you provide a chat template. self.tokenizer.apply_chat_template can help here
         You don't need to change this function for now.
         """
-        return question
+        #return question
+        # This MUST match the training string used in rft.py/sft.py
+        return f"{question} Answer with <answer>...</answer>."
 
     def parse_answer(self, answer: str) -> float:
         """
