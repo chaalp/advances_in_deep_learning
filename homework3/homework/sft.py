@@ -173,7 +173,6 @@ def train_model(
         args=args,
         train_dataset=train_dataset,
         data_collator=default_data_collator,
-        label_names=["labels"],
     )
 
     trainer.train()
