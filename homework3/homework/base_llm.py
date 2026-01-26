@@ -26,6 +26,7 @@ class BaseLLM:
         #return f"{question} Answer with <answer>...</answer>."
         return f"{question}\nReturn ONLY <answer>NUMBER</answer>."
 
+    '''
     def parse_answer(self, answer: str) -> float:
         """
         Parse the <answer></answer> tag and return a float.
@@ -40,6 +41,31 @@ class BaseLLM:
             return float("nan")
         except (IndexError, ValueError):
             return float("nan")
+    '''
+
+    def parse_answer(self, answer: str) -> float:
+        """
+        Parse answer from model output.
+        Supports:
+        - <answer>NUMBER</answer>
+        - plain NUMBER anywhere in the text (fallback)
+        """
+        try:
+            # Prefer number after <answer>
+            m = re.search(r"<answer>\s*([-+]?\d*\.?\d+)", answer)
+            if m:
+                return float(m.group(1))
+
+            # Fallback: first numeric token anywhere
+            m2 = re.search(r"([-+]?\d*\.?\d+)", answer)
+            if m2:
+                return float(m2.group(1))
+
+            return float("nan")
+        except ValueError:
+            return float("nan")
+
+
 
     def generate(self, prompt: str) -> str:
         """
