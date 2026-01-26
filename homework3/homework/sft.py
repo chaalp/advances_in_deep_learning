@@ -38,6 +38,10 @@ def tokenize(tokenizer, question: str, answer: str):
     # Create labels: mask out the prompt part
     labels = [-100] * question_len + input_ids[question_len:]
 
+    # sanity check must supervise at least 1 token
+    if all(x == -100 for x in labels):
+        raise ValueError("All labels are -100 — supervision is empty. Check question_len / max_length.")
+
     for i in range(len(labels)):
         if full["attention_mask"][i] == 0:
             labels[i] = -100
@@ -62,7 +66,7 @@ def format_example(prompt: str, answer: str) -> dict[str, str]:
     # Use compact formatting: keep up to 3 decimals, strip trailing zeros
     ans_str = f"{ans:.3f}".rstrip("0").rstrip(".")
     return {
-        "question": prompt,
+        "question": prompt + " Answer with <answer>...</answer>.",
         "answer": f"<answer>{ans_str}</answer>",
     }
 
