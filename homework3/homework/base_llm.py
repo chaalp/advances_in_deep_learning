@@ -69,18 +69,15 @@ class BaseLLM:
 
     def parse_answer(self, answer: str) -> float:
         try:
-            # 1. Primary: Extract first number inside <answer> tags
-            tag_match = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
-            if tag_match:
-                val_str = tag_match.group(1).replace(",", "") # Handle commas
-                return float(val_str)
+            # 1. Prefer number after <answer>
+            m = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
+            if m:
+                return float(m.group(1).replace(",", ""))
 
-            # 2. Fallback: Extract the LAST number in the text
-            # This is more likely to be the conclusion than the first number mentioned.
-            all_numbers = re.findall(r"[-+]?[\d,]*\.?\d+", answer)
-            if all_numbers:
-                val_str = all_numbers[-1].replace(",", "")
-                return float(val_str)
+            # 2. Fallback: THE LAST numeric token (more likely the conclusion)
+            all_nums = re.findall(r"[-+]?[\d,]*\.?\d+", answer)
+            if all_nums:
+                return float(all_nums[-1].replace(",", ""))
 
             return float("nan")
         except (ValueError, TypeError):

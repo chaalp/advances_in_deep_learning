@@ -53,7 +53,9 @@ def tokenize(tokenizer, question: str, answer: str):
 '''
 
 def tokenize(tokenizer, question: str, answer: str):
-    full_text = f"{question} {answer}{tokenizer.eos_token}"
+    
+    # 1. Build the full string exactly
+    full_text = f"{question} {answer}{tokenizer.eos_token}" # Space between Q and A
 
     tokenizer.padding_side = "right"
     tokenizer.pad_token = tokenizer.eos_token
@@ -62,24 +64,22 @@ def tokenize(tokenizer, question: str, answer: str):
     input_ids = full["input_ids"]
     attention_mask = full["attention_mask"]
 
-    # prompt length must match the exact prefix used in full_text: f"{question} "
+    # 2. Match the prefix exactly to get the correct length
     prompt_ids = tokenizer(f"{question} ", add_special_tokens=False)["input_ids"]
     prompt_len = len(prompt_ids)
 
     labels = input_ids.copy()
 
-    # mask prompt tokens
+    # Mask exactly the prompt tokens
     for i in range(min(prompt_len, len(labels))):
         labels[i] = -100
 
-    # mask padding
     for i, m in enumerate(attention_mask):
         if m == 0:
             labels[i] = -100
 
     full["labels"] = labels
     return full
-
 
 def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
