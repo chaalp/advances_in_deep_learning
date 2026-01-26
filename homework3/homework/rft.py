@@ -108,6 +108,7 @@ def train_model(
         save_strategy=save_strategy,
         save_total_limit=2,
         remove_unused_columns=False,
+        label_names=["labels"], # Common default
     )
 
     trainer = Trainer(
