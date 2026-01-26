@@ -47,7 +47,7 @@ def train_model(
             return len(self.data)
 
         def __getitem__(self, idx):
-            # entry: [question, correct_float, reasoning_with_<answer>]
+            # [question, correct_float, reasoning_with_<answer>]
             q, _, reasoning = self.data[idx]
             return (q, reasoning)
 
@@ -97,14 +97,15 @@ def train_model(
     llm.model.config.use_cache = False
 
     # Training hyperparams
-    learning_rate = float(kwargs.get("learning_rate", 2e-4))
-    num_train_epochs = float(kwargs.get("num_train_epochs", 3))
+    learning_rate = float(kwargs.get("learning_rate", 5e-5))
+    num_train_epochs = float(kwargs.get("num_train_epochs", 5))
     per_device_train_batch_size = int(kwargs.get("per_device_train_batch_size", 32))
     gradient_accumulation_steps = int(kwargs.get("gradient_accumulation_steps", 1))
     warmup_ratio = float(kwargs.get("warmup_ratio", 0.03))
     logging_steps = int(kwargs.get("logging_steps", 25))
     save_strategy = kwargs.get("save_strategy", "epoch")
 
+    # Training args
     args = TrainingArguments(
         output_dir=output_dir,
         logging_dir=output_dir,
@@ -115,12 +116,11 @@ def train_model(
         gradient_accumulation_steps=gradient_accumulation_steps,
         warmup_ratio=warmup_ratio,
         gradient_checkpointing=True,
-        #fp16=(llm.device == "cuda"),
         logging_steps=logging_steps,
         save_strategy=save_strategy,
         save_total_limit=2,
         remove_unused_columns=False,
-        label_names=["labels"], # Common default
+        label_names=["labels"],
         fp16=False,
         bf16=False,
         max_grad_norm=1.0,

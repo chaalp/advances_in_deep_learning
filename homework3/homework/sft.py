@@ -37,7 +37,7 @@ def tokenize(tokenizer, question: str, answer: str):
     # Create labels: mask out the prompt part
     labels = [-100] * question_len + input_ids[question_len:]
 
-    # sanity check must supervise at least 1 token
+    # Sanity check must supervise at least 1 token
     if all(x == -100 for x in labels):
         raise ValueError("All labels are -100 — supervision is empty. Check question_len / max_length.")
 
@@ -113,7 +113,7 @@ def train_model(
     from peft import LoraConfig, get_peft_model
 
     # Hyperparams (overridable via **kwargs)
-    learning_rate = float(kwargs.get("learning_rate", 2e-4))
+    learning_rate = float(kwargs.get("learning_rate", 5e-5))
     num_train_epochs = float(kwargs.get("num_train_epochs", 5))
     per_device_train_batch_size = int(kwargs.get("per_device_train_batch_size", 32))
     gradient_accumulation_steps = int(kwargs.get("gradient_accumulation_steps", 1))
@@ -122,18 +122,16 @@ def train_model(
     logging_steps = int(kwargs.get("logging_steps", 25))
     save_strategy = kwargs.get("save_strategy", "epoch")
 
-    # LoRA size control (< ~20MB recommended in README)
+    # LoRA params
     lora_r = int(kwargs.get("lora_r", 16))
     lora_alpha = int(kwargs.get("lora_alpha", 32))
     lora_dropout = float(kwargs.get("lora_dropout", 0.05))
 
-    # Data
     trainset = Dataset("train")
     llm = BaseLLM()
 
     train_dataset = TokenizedDataset(llm.tokenizer, trainset, format_example)
 
-    # LoRA
     lora_cfg = LoraConfig(
         r=lora_r,
         lora_alpha=lora_alpha,
@@ -175,12 +173,11 @@ def train_model(
         warmup_ratio=warmup_ratio,
         weight_decay=weight_decay,
         gradient_checkpointing=True,
-        #fp16=(llm.device == "cuda"),
         logging_steps=logging_steps,
         save_strategy=save_strategy,
         save_total_limit=2,
-        remove_unused_columns=False,  # important since our dataset returns dicts
-        label_names=["labels"], # Common default
+        remove_unused_columns=False,
+        label_names=["labels"],
         fp16=False,
         bf16=False,
         max_grad_norm=1.0,
