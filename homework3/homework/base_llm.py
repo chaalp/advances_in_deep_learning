@@ -105,7 +105,61 @@ class BaseLLM:
                 for r in self.batched_generate(prompts[idx : idx + micro_batch_size], num_return_sequences, temperature)
             ]
 
-        raise NotImplementedError()
+        #raise NotImplementedError()
+
+        self.tokenizer.padding_side = "left"
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        # Tokenize
+        inputs = self.tokenizer(
+            prompts,
+            padding=True,
+            truncation=True,
+            return_tensors="pt",
+        )
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        # Generation params
+        gen_kwargs = dict(
+            max_new_tokens=50,
+            eos_token_id=self.tokenizer.eos_token_id,
+        )
+
+        if temperature and temperature > 0:
+            gen_kwargs.update(
+                do_sample=True,
+                temperature=float(temperature),
+            )
+        else:
+            gen_kwargs.update(
+                do_sample=False,
+            )
+
+        if num_return_sequences is not None:
+            gen_kwargs["num_return_sequences"] = int(num_return_sequences)
+
+        # Generate
+        with torch.no_grad():
+            outputs = self.model.generate(
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+                **gen_kwargs,
+            )
+
+        # Decode ONLY the newly generated tokens (mask out prompt)
+        prompt_len = inputs["input_ids"].shape[1]
+        gen_tokens = outputs[:, prompt_len:]
+
+        decoded = self.tokenizer.batch_decode(gen_tokens, skip_special_tokens=True)
+
+        # If we generated multiple sequences per prompt, reshape to list[list[str]]
+        if num_return_sequences is not None:
+            n = len(prompts)
+            k = int(num_return_sequences)
+            return [decoded[i * k : (i + 1) * k] for i in range(n)]
+
+        return decoded
+
 
     def answer(self, *questions) -> list[float]:
         """
