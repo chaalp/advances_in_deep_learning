@@ -102,13 +102,17 @@ def train_model(
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         warmup_ratio=warmup_ratio,
-        gradient_checkpointing=True,
-        fp16=(llm.device == "cuda"),
+        #gradient_checkpointing=True,
+        #fp16=(llm.device == "cuda"),
         logging_steps=logging_steps,
         save_strategy=save_strategy,
         save_total_limit=2,
         remove_unused_columns=False,
         label_names=["labels"], # Common default
+        fp16=False,
+        bf16=False,
+        gradient_checkpointing=False,
+        max_grad_norm=1.0,
     )
 
     trainer = Trainer(
