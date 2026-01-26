@@ -161,7 +161,7 @@ def train_model(
         warmup_ratio=warmup_ratio,
         weight_decay=weight_decay,
         #gradient_checkpointing=True,
-        fp16=(llm.device == "cuda"),
+        #fp16=(llm.device == "cuda"),
         logging_steps=logging_steps,
         save_strategy=save_strategy,
         save_total_limit=2,
