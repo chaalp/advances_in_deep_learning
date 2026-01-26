@@ -31,12 +31,12 @@ class BaseLLM:
         This function is somewhat robust to output errors (e.g. missing </answer> tags).
         """
         try:
-            #return float(answer.split("<answer>")[1].split("</answer>")[0])
+            return float(answer.split("<answer>")[1].split("</answer>")[0])
             # Extracts the first numeric-looking thing after <answer>
-            match = re.search(r"<answer>\s*([-+]?\d*\.?\d+)", answer)
-            if match:
-                return float(match.group(1))
-            return float("nan")
+            #match = re.search(r"<answer>\s*([-+]?\d*\.?\d+)", answer)
+            #if match:
+                #return float(match.group(1))
+            #return float("nan")
         except (IndexError, ValueError):
             return float("nan")
 
