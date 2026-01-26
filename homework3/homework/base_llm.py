@@ -68,13 +68,16 @@ class BaseLLM:
     '''
 
     def parse_answer(self, answer: str) -> float:
+        if not answer or answer.isspace(): # Handle empty strings
+            return float("nan")
+        
         try:
-            # 1. Prefer number after <answer>
+            # Prioritize the tag
             m = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
             if m:
                 return float(m.group(1).replace(",", ""))
 
-            # 2. Fallback: THE LAST numeric token (more likely the conclusion)
+            # Fallback to the LAST number (likely the conclusion)
             all_nums = re.findall(r"[-+]?[\d,]*\.?\d+", answer)
             if all_nums:
                 return float(all_nums[-1].replace(",", ""))
@@ -82,7 +85,6 @@ class BaseLLM:
             return float("nan")
         except (ValueError, TypeError):
             return float("nan")
-
 
     def generate(self, prompt: str) -> str:
         """
