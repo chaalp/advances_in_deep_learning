@@ -33,7 +33,10 @@ def tokenize(tokenizer, question: str, answer: str):
 
     input_ids = full["input_ids"]
     #question_len = len(tokenizer(question)["input_ids"])
-    question_len = len(tokenizer(question + " ")["input_ids"])
+    #question_len = len(tokenizer(question + " ")["input_ids"])
+
+    prompt_ids = tokenizer(f"{question} ", add_special_tokens=False)["input_ids"]
+    question_len = len(prompt_ids)
 
     # Create labels: mask out the prompt part
     labels = [-100] * question_len + input_ids[question_len:]

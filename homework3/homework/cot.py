@@ -14,23 +14,20 @@ class CoTModel(BaseLLM):
             {
                 "role": "system",
                 "content": (
-                    "You solve unit conversion problems. "
-                    "Be concise. "
-                    "Think briefly, then output ONLY the final numeric answer inside "
-                    "<answer>...</answer>. "
-                    "Do not include units or extra text."
+                    "You are a helpful assistant that solves unit conversion problems. "
+                    "Show brief reasoning, then give the final numeric result inside <answer>...</answer>. "
+                    "Be concise."
                 ),
             },
             {
                 "role": "assistant",
                 "content": (
                     "Example:\n"
-                    "Question: How many minutes are in 2 hours?\n"
-                    "Reasoning: 2 hours = 2 * 60 = 120 minutes.\n"
-                    "<answer>120</answer>"
+                    "Question: How many grams are there in 6 kg?\n"
+                    "Reasoning: 1 kg = 1000 g, so 6 * 1000 = <answer>6000</answer>\n"
                 ),
             },
-            {"role": "user", "content": f"Question: {question}"},
+            {"role": "user", "content": question},
         ]
 
         return self.tokenizer.apply_chat_template(
