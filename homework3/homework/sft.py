@@ -110,7 +110,7 @@ def train_model(
         python -m homework.sft train --output_dir homework/sft_model
     """
     import torch
-    
+
     from transformers import Trainer, TrainingArguments, default_data_collator
     from peft import LoraConfig, get_peft_model
 
@@ -173,7 +173,7 @@ def train_model(
         gradient_accumulation_steps=1,
         warmup_ratio=0.05,               # 5% warmup
         weight_decay=0.01,               # Added for generalization
-        gradient_checkpointing=False,    # Disable if VRAM allows for speed
+        gradient_checkpointing=True,     # Disable if VRAM allows for speed
         bf16=torch.cuda.is_bf16_supported(), # Auto-detect BF16
         fp16=not torch.cuda.is_bf16_supported(), # Fallback to FP16
         logging_steps=10,
