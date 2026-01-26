@@ -148,11 +148,17 @@ class BaseLLM:
                 **gen_kwargs,
             )
 
-        # Decode ONLY the newly generated tokens (mask out prompt)
-        prompt_len = inputs["input_ids"].shape[1]
-        gen_tokens = outputs[:, prompt_len:]
+        # Number of input tokens per example (before generation)
+        input_lengths = inputs["attention_mask"].sum(dim=1)
 
-        decoded = self.tokenizer.batch_decode(gen_tokens, skip_special_tokens=True)
+        generated_texts = []
+        for i in range(outputs.shape[0]):
+            gen = outputs[i, input_lengths[i]:]
+            generated_texts.append(gen)
+
+        decoded = self.tokenizer.batch_decode(
+            generated_texts, skip_special_tokens=True
+        )
 
         # If we generated multiple sequences per prompt, reshape to list[list[str]]
         if num_return_sequences is not None:
