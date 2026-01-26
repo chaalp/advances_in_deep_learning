@@ -14,18 +14,20 @@ class CoTModel(BaseLLM):
             {
                 "role": "system",
                 "content": (
-                    "You solve unit conversion questions. "
-                    "Be concise. Show brief reasoning, then output the final numeric result in "
-                    "<answer>...</answer>."
+                    "You solve unit conversion problems. "
+                    "Be concise. "
+                    "Think briefly, then output ONLY the final numeric answer inside "
+                    "<answer>...</answer>. "
+                    "Do not include units or extra text."
                 ),
             },
             {
                 "role": "assistant",
                 "content": (
                     "Example:\n"
-                    "Question: How many grams are in 6 kg?\n"
-                    "Reasoning: 1 kg = 1000 g, so 6 * 1000 = 6000.\n"
-                    "Final: <answer>6000</answer>"
+                    "Question: How many minutes are in 2 hours?\n"
+                    "Reasoning: 2 hours = 2 * 60 = 120 minutes.\n"
+                    "<answer>120</answer>"
                 ),
             },
             {"role": "user", "content": question},
