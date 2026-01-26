@@ -14,19 +14,21 @@ class CoTModel(BaseLLM):
             {
                 "role": "system",
                 "content": (
-                    "You are a helpful assistant that solves unit conversion problems. "
-                    "Show brief reasoning, then give the final numeric result inside <answer>...</answer>. "
-                    "Be concise."
+                    "You are a precise unit conversion assistant. "
+                    "First, identify the conversion factor. Second, perform the calculation. "
+                    "Finally, provide the numeric result inside <answer> tags. "
+                    "Respond with reasoning then the answer."
                 ),
             },
-            {
-                "role": "assistant",
-                "content": (
-                    "Example:\n"
-                    "Question: How many grams are there in 6 kg?\n"
-                    "Reasoning: 1 kg = 1000 g, so 6 * 1000 = <answer>6000</answer>\n"
-                ),
-            },
+            # Few-Shot Example 1: Standard conversion
+            {"role": "user", "content": "How many meters are in 5.5 kilometers?"},
+            {"role": "assistant", "content": "1 kilometer is 1000 meters. So, 5.5 * 1000 = 5500. <answer>5500</answer>"},
+            
+            # Few-Shot Example 2: Precision/Decimal handling
+            {"role": "user", "content": "Convert 12 inches to centimeters."},
+            {"role": "assistant", "content": "1 inch is 2.54 cm. 12 * 2.54 = 30.48. <answer>30.48</answer>"},
+            
+            # The actual question
             {"role": "user", "content": question},
         ]
 
