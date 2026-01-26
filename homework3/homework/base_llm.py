@@ -31,12 +31,12 @@ class BaseLLM:
         This function is somewhat robust to output errors (e.g. missing </answer> tags).
         """
         try:
-            return float(answer.split("<answer>")[1].split("</answer>")[0])
+            #return float(answer.split("<answer>")[1].split("</answer>")[0])
             # Extracts the first numeric-looking thing after <answer>
-            #match = re.search(r"<answer>\s*([-+]?\d*\.?\d+)", answer)
-            #if match:
-                #return float(match.group(1))
-            #return float("nan")
+            match = re.search(r"<answer>\s*([-+]?\d*\.?\d+)", answer)
+            if match:
+                return float(match.group(1))
+            return float("nan")
         except (IndexError, ValueError):
             return float("nan")
 
@@ -129,7 +129,7 @@ class BaseLLM:
 
         # Generation params
         gen_kwargs = dict(
-            max_new_tokens=24,
+            max_new_tokens=32,
             min_new_tokens=1,
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.eos_token_id,
