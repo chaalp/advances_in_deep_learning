@@ -32,11 +32,7 @@ def tokenize(tokenizer, question: str, answer: str):
     full = tokenizer(full_text, padding="max_length", truncation=True, max_length=128)
 
     input_ids = full["input_ids"]
-    #question_len = len(tokenizer(question)["input_ids"])
-    #question_len = len(tokenizer(question + " ")["input_ids"])
-
-    prompt_ids = tokenizer(f"{question} ", add_special_tokens=False)["input_ids"]
-    question_len = len(prompt_ids)
+    question_len = len(tokenizer(question)["input_ids"])
 
     # Create labels: mask out the prompt part
     labels = [-100] * question_len + input_ids[question_len:]
@@ -59,18 +55,22 @@ def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
     #raise NotImplementedError()
 
-    # Ensure numeric, then round for stability
+    # 1. Standardize numeric formatting without over-rounding
     try:
-        ans = float(answer)
+        # Using a higher precision or raw string to avoid precision loss
+        ans_val = float(answer)
+        ans_str = f"{ans_val:g}" # 'g' keeps significant digits, avoids trailing zeros
     except (TypeError, ValueError):
-        # Fallback: leave as-is if something unexpected comes in
-        return {"question": prompt, "answer": f"<answer>{answer}</answer>"}
+        ans_str = str(answer)
 
-    # Use compact formatting: keep up to 3 decimals, strip trailing zeros
-    ans_str = f"{ans:.3f}".rstrip("0").rstrip(".")
+    # 2. Use the exact same prompt structure used in your testing
+    # This ensures the model's 'trigger' for answering is the same in both phases.
+    formatted_question = f"{prompt} Answer with <answer>...</answer>."
+    formatted_answer = f"<answer>{ans_str}</answer>"
+
     return {
-        "question": prompt + " Answer with <answer>...</answer>.",
-        "answer": f"<answer>{ans_str}</answer>",
+        "question": formatted_question,
+        "answer": formatted_answer,
     }
 
 class TokenizedDataset:
@@ -123,7 +123,7 @@ def train_model(
     save_strategy = kwargs.get("save_strategy", "epoch")
 
     # LoRA size control (< ~20MB recommended in README)
-    lora_r = int(kwargs.get("lora_r", 8))
+    lora_r = int(kwargs.get("lora_r", 16))
     lora_alpha = int(kwargs.get("lora_alpha", 32))
     lora_dropout = float(kwargs.get("lora_dropout", 0.05))
 
@@ -143,14 +143,24 @@ def train_model(
         bias="none",
         task_type="CAUSAL_LM",
     )
+
+    # 1. Initialize LoRA
     llm.model = get_peft_model(llm.model, lora_cfg)
     llm.model.print_trainable_parameters()
 
     llm.model.config.use_cache = False
+
+    # 2. Ensure the model is in training mode
+    llm.model.train()
     
-    # Fix for gradient_checkpointing + LoRA on GPU (recommended by README)
+    # 3. Fix for gradient checkpointing + LoRA
     if llm.device == "cuda":
         llm.model.enable_input_require_grads()
+
+    # 4. Explicitly ensure LoRA weights are trainable
+    for name, param in llm.model.named_parameters():
+        if "lora_" in name:
+            param.requires_grad = True
 
     # Training args
     args = TrainingArguments(

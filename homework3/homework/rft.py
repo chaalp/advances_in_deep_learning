@@ -76,13 +76,24 @@ def train_model(
         bias="none",
         task_type="CAUSAL_LM",
     )
+
+    # 1. Initialize LoRA
     llm.model = get_peft_model(llm.model, lora_cfg)
     llm.model.print_trainable_parameters()
 
     llm.model.config.use_cache = False
 
+    # 2. Ensure the model is in training mode
+    llm.model.train()
+    
+    # 3. Fix for gradient checkpointing + LoRA
     if llm.device == "cuda":
         llm.model.enable_input_require_grads()
+
+    # 4. Explicitly ensure LoRA weights are trainable
+    for name, param in llm.model.named_parameters():
+        if "lora_" in name:
+            param.requires_grad = True    
 
     # Training hyperparams
     learning_rate = float(kwargs.get("learning_rate", 2e-4))
