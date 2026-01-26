@@ -23,8 +23,8 @@ class BaseLLM:
         """
         #return question
         # This MUST match the training string used in rft.py/sft.py
-        #return f"{question} Answer with <answer>...</answer>."
-        return f"{question}\nReturn ONLY <answer>NUMBER</answer>."
+        return f"{question} Answer with <answer>...</answer>."
+        #return f"{question}\nReturn ONLY <answer>NUMBER</answer>."
 
     '''
     def parse_answer(self, answer: str) -> float:
