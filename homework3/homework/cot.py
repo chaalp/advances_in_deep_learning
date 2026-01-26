@@ -30,7 +30,7 @@ class CoTModel(BaseLLM):
                     "<answer>120</answer>"
                 ),
             },
-            {"role": "user", "content": question},
+            {"role": "user", "content": f"Question: {question}"},
         ]
 
         return self.tokenizer.apply_chat_template(
