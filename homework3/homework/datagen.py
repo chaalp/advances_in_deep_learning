@@ -19,7 +19,7 @@ def generate_dataset(output_json: str, oversample: int = 10, temperature: float 
     results: list[list] = []
 
     # Generate in batches for speed/memory safety
-    batch_size = 32
+    batch_size = 16
     for start in range(0, len(trainset), batch_size):
         batch = [trainset[i] for i in range(start, min(len(trainset), start + batch_size))]
         questions = [q for (q, _) in batch]
