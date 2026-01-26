@@ -32,7 +32,10 @@ def tokenize(tokenizer, question: str, answer: str):
     full = tokenizer(full_text, padding="max_length", truncation=True, max_length=128)
 
     input_ids = full["input_ids"]
-    question_len = len(tokenizer(question)["input_ids"])
+    #question_len = len(tokenizer(question)["input_ids"])
+
+    prompt_ids = tokenizer(f"{question} ", add_special_tokens=False)["input_ids"]
+    question_len = len(prompt_ids)
 
     # Create labels: mask out the prompt part
     labels = [-100] * question_len + input_ids[question_len:]
@@ -108,7 +111,6 @@ def train_model(
     Expected usage (from repo root):
         python -m homework.sft train --output_dir homework/sft_model
     """
-    import torch
     from transformers import Trainer, TrainingArguments, default_data_collator
     from peft import LoraConfig, get_peft_model
 
@@ -136,8 +138,7 @@ def train_model(
         r=lora_r,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
-        #target_modules="all-linear",
-        target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
+        target_modules="all-linear",
         bias="none",
         task_type="CAUSAL_LM",
     )
