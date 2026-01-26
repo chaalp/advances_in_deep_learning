@@ -49,8 +49,21 @@ def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
     Construct a question / answer pair. Consider rounding the answer to make it easier for the LLM.
     """
-    raise NotImplementedError()
+    #raise NotImplementedError()
 
+    # Ensure numeric, then round for stability
+    try:
+        ans = float(answer)
+    except (TypeError, ValueError):
+        # Fallback: leave as-is if something unexpected comes in
+        return {"question": prompt, "answer": f"<answer>{answer}</answer>"}
+
+    # Use compact formatting: keep up to 3 decimals, strip trailing zeros
+    ans_str = f"{ans:.3f}".rstrip("0").rstrip(".")
+    return {
+        "question": prompt,
+        "answer": f"<answer>{ans_str}</answer>",
+    }
 
 class TokenizedDataset:
     def __init__(self, tokenizer, data: Dataset, format_fn):
