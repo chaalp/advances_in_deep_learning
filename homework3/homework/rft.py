@@ -102,7 +102,7 @@ def train_model(
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         warmup_ratio=warmup_ratio,
-        #gradient_checkpointing=True,
+        gradient_checkpointing=True,
         #fp16=(llm.device == "cuda"),
         logging_steps=logging_steps,
         save_strategy=save_strategy,
