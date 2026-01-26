@@ -23,7 +23,8 @@ class BaseLLM:
         """
         #return question
         # This MUST match the training string used in rft.py/sft.py
-        return f"{question} Answer with <answer>...</answer>."
+        #return f"{question} Answer with <answer>...</answer>."
+        return f"{question}\nReturn ONLY <answer>NUMBER</answer>."
 
     def parse_answer(self, answer: str) -> float:
         """
@@ -73,6 +74,59 @@ class BaseLLM:
 
     def batched_generate(
         self, prompts: list[str], num_return_sequences: int | None = None, temperature: float = 0
+    ):
+        # Micro-batching without tqdm
+        micro_batch_size = 32
+        if len(prompts) > micro_batch_size:
+            out = []
+            for i in range(0, len(prompts), micro_batch_size):
+                out.extend(self.batched_generate(prompts[i:i+micro_batch_size], num_return_sequences, temperature))
+            return out
+
+        self.tokenizer.padding_side = "left"
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        inputs = self.tokenizer(
+            prompts,
+            padding=True,
+            truncation=True,
+            return_tensors="pt",
+        )
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        gen_kwargs = dict(
+            max_new_tokens=16,  # key speed fix
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.eos_token_id,
+            do_sample=False,
+            num_beams=1,
+            use_cache=True,
+        )
+
+        if num_return_sequences is not None:
+            gen_kwargs["num_return_sequences"] = int(num_return_sequences)
+
+        with torch.inference_mode():
+            outputs = self.model.generate(
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+                **gen_kwargs,
+            )
+
+        prompt_len = inputs["input_ids"].shape[1]
+        gen_tokens = outputs[:, prompt_len:]
+
+        decoded = self.tokenizer.batch_decode(gen_tokens, skip_special_tokens=True)
+
+        if num_return_sequences is not None:
+            n, k = len(prompts), num_return_sequences
+            return [decoded[i*k:(i+1)*k] for i in range(n)]
+
+        return decoded
+
+    '''
+    def batched_generate(
+        self, prompts: list[str], num_return_sequences: int | None = None, temperature: float = 0
     ) -> list[str] | list[list[str]]:
         """
         Batched version of `generate` method.
@@ -98,7 +152,7 @@ class BaseLLM:
         Pro Tip: Only batch_decode generated tokens by masking out the inputs with
                  outputs[:, len(inputs["input_ids"][0]) :]
         """
-        from tqdm import tqdm  # Importing tqdm for progress bar
+        #from tqdm import tqdm  # Importing tqdm for progress bar
 
         # Preventing OOM
         # Depending on your GPU batched generation will use a lot of memory.
@@ -169,7 +223,7 @@ class BaseLLM:
             return [decoded[i * k : (i + 1) * k] for i in range(n)]
 
         return decoded
-
+    '''
 
     def answer(self, *questions) -> list[float]:
         """
