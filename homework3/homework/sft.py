@@ -16,7 +16,7 @@ def load() -> BaseLLM:
 
     return llm
 
-
+'''
 def tokenize(tokenizer, question: str, answer: str):
     """
     Tokenize a data element.
@@ -46,6 +46,35 @@ def tokenize(tokenizer, question: str, answer: str):
 
     for i in range(len(labels)):
         if full["attention_mask"][i] == 0:
+            labels[i] = -100
+
+    full["labels"] = labels
+    return full
+'''
+
+def tokenize(tokenizer, question: str, answer: str):
+    full_text = f"{question} {answer}{tokenizer.eos_token}"
+
+    tokenizer.padding_side = "right"
+    tokenizer.pad_token = tokenizer.eos_token
+
+    full = tokenizer(full_text, padding="max_length", truncation=True, max_length=128)
+    input_ids = full["input_ids"]
+    attention_mask = full["attention_mask"]
+
+    # prompt length must match the exact prefix used in full_text: f"{question} "
+    prompt_ids = tokenizer(f"{question} ", add_special_tokens=False)["input_ids"]
+    prompt_len = len(prompt_ids)
+
+    labels = input_ids.copy()
+
+    # mask prompt tokens
+    for i in range(min(prompt_len, len(labels))):
+        labels[i] = -100
+
+    # mask padding
+    for i, m in enumerate(attention_mask):
+        if m == 0:
             labels[i] = -100
 
     full["labels"] = labels
