@@ -45,16 +45,16 @@ class BaseLLM:
         Parse the <answer></answer> tag and return a float.
         This function is somewhat robust to output errors (e.g. missing </answer> tags).
         """
-        if not answer or answer.isspace(): # Handle empty strings
+        if not answer or answer.isspace(): # Handle the empty string from your log
             return float("nan")
-        
+    
         try:
             # Prioritize the tag
             m = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
             if m:
                 return float(m.group(1).replace(",", ""))
 
-            # Fallback to the LAST number (likely the conclusion)
+            # Fallback to the LAST number (the conclusion) if tag is missing
             all_nums = re.findall(r"[-+]?[\d,]*\.?\d+", answer)
             if all_nums:
                 return float(all_nums[-1].replace(",", ""))

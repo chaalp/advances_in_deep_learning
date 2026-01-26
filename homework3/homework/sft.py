@@ -24,27 +24,26 @@ def tokenize(tokenizer, question: str, answer: str):
     `labels[i] == -100` for the question or masked out parts, since we only want to supervise
     the answer.
     """
-    # 1. Build the full string exactly
-    full_text = f"{question} {answer}{tokenizer.eos_token}" # Space between Q and A
+    # Build the full string exactly
+    full_text = f"{question} {answer}{tokenizer.eos_token}"
 
     tokenizer.padding_side = "right"
     tokenizer.pad_token = tokenizer.eos_token
 
     full = tokenizer(full_text, padding="max_length", truncation=True, max_length=128)
     input_ids = full["input_ids"]
-    attention_mask = full["attention_mask"]
-
-    # 2. Match the prefix exactly to get the correct length
-    prompt_ids = tokenizer(f"{question} ", add_special_tokens=False)["input_ids"]
+    
+    # Calculate prompt_len by tokenizing ONLY the question part of the same string
+    prompt_ids = tokenizer(question, add_special_tokens=True)["input_ids"]
     prompt_len = len(prompt_ids)
 
     labels = input_ids.copy()
-
-    # Mask exactly the prompt tokens
+    # Mask exactly the question tokens so the model only learns the answer
     for i in range(min(prompt_len, len(labels))):
         labels[i] = -100
 
-    for i, m in enumerate(attention_mask):
+    # Mask padding tokens
+    for i, m in enumerate(full["attention_mask"]):
         if m == 0:
             labels[i] = -100
 
