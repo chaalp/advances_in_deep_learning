@@ -12,6 +12,7 @@ def load() -> BaseLLM:
 
     llm = BaseLLM()
     llm.model = PeftModel.from_pretrained(llm.model, model_path).to(llm.device)
+    llm.model_name = "rft"
     llm.model.eval()
 
     return llm
