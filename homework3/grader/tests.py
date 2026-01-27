@@ -124,23 +124,29 @@ class CoTGrader(Grader):
         dataset = self.module.data.Dataset("valid")
         model = self.load_model()
 
-        # --- ADD THIS DEBUG WRAPPER ---
+        # --- DEBUG WRAPPER ---
         original_generate = model.generate
         def debug_generate(question):
             answer = original_generate(question)
-            # This will print every Q&A pair to the console
-            self.logger.debug(f"\n[INPUT QUESTION]: {question}")
-            self.logger.debug(f"[MODEL RESPONSE]: {answer}\n{'-'*40}")
+            # This logs the question and answer for every sample to your console
+            self.logger.debug(f"\n[Q]: {question}")
+            self.logger.debug(f"[A]: {answer}\n{'-'*30}")
             return answer
         
-        # Replace the real method with our debug version
-        model.generate = debug_generate 
-        # ------------------------------
+        # Monkey-patch the model
+        model.generate = debug_generate
+        # ---------------------
 
         benchmark_result = self.module.data.benchmark(model, dataset, 100)
         print(benchmark_result.accuracy)
 
-        return self.normalize_score(benchmark_result.accuracy, *self.VALIDATION_ACC_BOUND)
+        #return self.normalize_score(benchmark_result.accuracy, *self.VALIDATION_ACC_BOUND)
+        # Calculate final score
+        score = self.normalize_score(benchmark_result.accuracy, *self.VALIDATION_ACC_BOUND)
+        
+        # Return a tuple so 'grader.py' can show the "Reason"
+        reason = f"Raw Accuracy: {benchmark_result.accuracy:.4f}"
+        return score, reason
 
 
 class SFTGrader(CoTGrader):
