@@ -132,7 +132,7 @@ class CoTGrader(Grader):
             responses = original_batched_generate(prompts, num_return_sequences, temperature)
     
             # Only log if the model is identified as 'sft_model'
-            if getattr(model, "model_name", "") == "sft_model":
+            if getattr(model, "model_name", "") == "sft":
                 for q, r in zip(prompts, responses):
                     self.logger.debug(f"\n" + "="*50)
                     self.logger.debug(f"QUESTION: {q}")
