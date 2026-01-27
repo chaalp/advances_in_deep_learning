@@ -24,7 +24,7 @@ def tokenize(tokenizer, question: str, answer: str):
     `labels[i] == -100` for the question or masked out parts, since we only want to supervise
     the answer.
     """
-     # This MUST be an exact copy of the messages list in BaseLLM.format_prompt
+    # This MUST be an exact copy of the messages list in BaseLLM.format_prompt
     messages = [
         {"role": "system", "content": "You are a helpful assistant that performs unit conversions. Show brief reasoning, then provide the final numeric result inside <answer> tags."},
         {"role": "user", "content": "How many meters are there in 6 km?"},
@@ -41,7 +41,7 @@ def tokenize(tokenizer, question: str, answer: str):
     
     # Calculate prompt length for masking
     prompt_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
-    prompt_len = len(tokenizer.encode(prompt_text))
+    prompt_len = len(tokenizer.encode(prompt_text, add_special_tokens=False))
 
     labels = full["input_ids"].copy()
     for i in range(len(labels)):
