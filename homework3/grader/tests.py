@@ -126,38 +126,31 @@ class CoTGrader(Grader):
 
         # --- NEW LOGGING WRAPPER ---
         original_batched_generate = model.batched_generate
+        # Initialize the counter on the grader instance itself
+        self.failed_cases_logged = 0 
 
         def debug_batched_generate(prompts, num_return_sequences=None, temperature=0):
-            # Get the actual model output
-            global failed_cases_logged
+            # No 'nonlocal' or 'global' needed when accessing 'self'
             responses = original_batched_generate(prompts, num_return_sequences, temperature)
-    
-        
-            # Only log if model is 'sft' and we haven't hit the 10-failure limit
-            if getattr(model, "model_name", "") == "sft" and failed_cases_logged < 10:
+
+            # Only log if model is 'sft' and we are under the limit
+            if getattr(model, "model_name", "") == "sft" and self.failed_cases_logged < 10:
                 for q, r in zip(prompts, responses):
-                    if failed_cases_logged >= 10:
+                    if self.failed_cases_logged >= 10:
                         break
             
-                # Parse the model's response
-                predicted_val = model.parse_answer(r)
-            
-                # Note: You would ideally compare predicted_val to the actual target here.
-                # If the grader's internal loop is accessible, use that; 
-                # otherwise, logging any case where predicted_val is NaN or clearly wrong:
-            
-                # Simple check for formatted but incorrect/NaN responses
-                if predicted_val is None or str(predicted_val) == "nan":
-                    self.logger.debug(f"\n" + "!"*20 + " FAILED CASE " + "!"*20)
-                    self.logger.debug(f"QUESTION: {q}")
-                    self.logger.debug(f"RESPONSE: {r}")
-                    self.logger.debug("!"*50 + "\n")
-                    failed_cases_logged += 1
+                    # Simple heuristic: if it's SFT and there is reasoning text, it's a likely failure
+                    # Or use parse_answer to check for math errors (if you have the ground truth)
+                    if len(r) > 20: # Example: response is unexpectedly long for a direct answer
+                        self.logger.debug(f"\n" + "!"*20 + f" FAILURE {self.failed_cases_logged + 1} " + "!"*20)
+                        self.logger.debug(f"QUESTION: {q}")
+                        self.logger.debug(f"RESPONSE: {r}")
+                        self.logger.debug("!"*53 + "\n")
+                        self.failed_cases_logged += 1
 
             return responses
 
-
-        # Monkey-patch batched_generate instead of generate
+        # Monkey-patch batched_generate
         model.batched_generate = debug_batched_generate
         # ---------------------------
 
