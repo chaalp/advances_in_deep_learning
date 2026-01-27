@@ -158,7 +158,7 @@ class BaseLLM:
 
         # Generation params
         gen_kwargs = dict(
-            max_new_tokens=64,     # Reduced for speed/timeout safety
+            max_new_tokens=32,     # Reduced for speed/timeout safety
             min_new_tokens=5,      # Forces the model to generate a response
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.eos_token_id,
