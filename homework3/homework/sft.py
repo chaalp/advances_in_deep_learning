@@ -37,12 +37,11 @@ def tokenize(tokenizer, question: str, answer: str):
     tokenizer.padding_side = "right"
     tokenizer.pad_token = tokenizer.eos_token
     
-    # 2. Increase max_length to 256 to account for template overhead
+    # 2. Increase max_length to 256 for template overhead
     full = tokenizer(full_text, padding="max_length", truncation=True, max_length=256)
     input_ids = full["input_ids"]
 
     # 3. Calculate prompt length to mask labels correctly
-    # We tokenize only up to the assistant's turn to find the split point
     prompt_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
     prompt_len = len(tokenizer.encode(prompt_text))
 
@@ -62,22 +61,18 @@ def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
     #raise NotImplementedError()
 
-    # 1. Standardize numeric formatting without over-rounding
+    # 1. Standardize numeric formatting
     try:
-        # Using a higher precision or raw string to avoid precision loss
         ans_val = float(answer)
-        ans_str = f"{ans_val:g}" # 'g' keeps significant digits, avoids trailing zeros
+        ans_str = f"{ans_val:g}"
     except (TypeError, ValueError):
         ans_str = str(answer)
 
-    # 2. Use the exact same prompt structure used in your testing
-    # This ensures the model's 'trigger' for answering is the same in both phases.
-    formatted_question = f"{prompt} Answer with <answer>...</answer>."
-    formatted_answer = f"<answer>{ans_str}</answer>"
-
+    # 2. Return the RAW components
+    # We will wrap these in the chat template inside the tokenize function
     return {
-        "question": formatted_question,
-        "answer": formatted_answer,
+        "question": prompt,
+        "answer": f"<answer>{ans_str}</answer>",
     }
 
 class TokenizedDataset:
