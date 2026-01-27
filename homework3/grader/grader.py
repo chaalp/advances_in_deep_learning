@@ -80,19 +80,19 @@ def case(func, kwargs=None, score=1, extra_credit=False, timeout=1000):
             except NotImplementedError:
                 msg = "Not Implemented"
             except AssertionError as e:
-                msg = e.args[0]
+                msg = e.args[0] if e.args else "Assertion failed (no message)"
             except CheckFailed as e:
                 msg = str(e)
             except Exception as e:
-                msg = type(e).__name__
+                msg = f"{type(e).__name__}: {str(e)}"
                 error = traceback.format_exc()
 
-            # --- ADD DEBUG HERE ---
-            if v < 1.0 or error: # Trigger if score is not perfect or an error occurred
-                self.logger.debug(f"DEBUG: Case failed with kwargs: {a}")
-                self.logger.debug(f"DEBUG: Failure message: {msg}")
-                # import pdb; pdb.set_trace() # Uncomment this for an interactive debugger
-            # ----------------------    
+            # --- SINGLE DEBUG POINT ---
+            if v < 1.0 or error:
+                self.logger.debug(f"DEBUG: Case '{func.__name__}' failed!")
+                self.logger.debug(f"DEBUG: Args: {a}")
+                self.logger.debug(f"DEBUG: Reason: {msg}")
+            # --------------------------
 
             total += 1
 
