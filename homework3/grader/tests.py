@@ -124,29 +124,32 @@ class CoTGrader(Grader):
         dataset = self.module.data.Dataset("valid")
         model = self.load_model()
 
-        # --- DEBUG WRAPPER ---
+       # --- NEW LOGGING WRAPPER ---
         original_generate = model.generate
-        def debug_generate(question):
-            answer = original_generate(question)
-            # This logs the question and answer for every sample to your console
-            self.logger.debug(f"\n[Q]: {question}")
-            self.logger.debug(f"[A]: {answer}\n{'-'*30}")
-            return answer
         
-        # Monkey-patch the model
+        def debug_generate(question):
+            # 1. Get the actual model output
+            answer = original_generate(question)
+            
+            # 2. Log them to the console (visible with -vv flag)
+            self.logger.debug(f"\n" + "="*50)
+            self.logger.debug(f"QUESTION: {question}")
+            self.logger.debug(f"RESPONSE: {answer}")
+            self.logger.debug("="*50 + "\n")
+            
+            return answer
+
+        # Monkey-patch the model instance used by the benchmark
         model.generate = debug_generate
-        # ---------------------
+        # ---------------------------
 
         benchmark_result = self.module.data.benchmark(model, dataset, 100)
         print(benchmark_result.accuracy)
 
         #return self.normalize_score(benchmark_result.accuracy, *self.VALIDATION_ACC_BOUND)
-        # Calculate final score
+        # Return score and the accuracy as the 'Reason'
         score = self.normalize_score(benchmark_result.accuracy, *self.VALIDATION_ACC_BOUND)
-        
-        # Return a tuple so 'grader.py' can show the "Reason"
-        reason = f"Raw Accuracy: {benchmark_result.accuracy:.4f}"
-        return score, reason
+        return score, f"Raw Accuracy: {benchmark_result.accuracy:.4f}"
 
 
 class SFTGrader(CoTGrader):
