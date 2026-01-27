@@ -56,7 +56,7 @@ class BaseLLM:
         # 2. Fallback to the last numerical value in the string
         tag_match = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
         print("DEBUG: tag_match found:", bool(tag_match))
-        
+
         # If no tag, find all numbers and pick the last one
         if tag_match:
             raw_val = tag_match.group(1)
@@ -73,8 +73,17 @@ class BaseLLM:
             # Clean commas and convert
             val = float(raw_val.replace(",", ""))
             # Return as int if it's a whole number, else float
-            result = int(val) if val.is_integer() else val
-            print("DEBUG: parsed value:", val, "-> returned:", result)
+            result = int(val) 
+
+            if val.is_integer():
+                print("DEBUG: parsed value:", val, "-> returned:", int(val))
+                return int(val)
+
+            # normalize decimals (tune decimals if needed)
+            print("DEBUG: parsed value:", val, "-> returned:", round(val, 5))
+            return round(val, 5)
+
+            
             return result
         except ValueError:
             return float("nan")
