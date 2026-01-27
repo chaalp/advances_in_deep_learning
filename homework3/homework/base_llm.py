@@ -164,7 +164,7 @@ class BaseLLM:
 
         # reduce length for large batches to save VRAM
         current_max = 256 if is_batched and len(prompts) > 16 else 256
-        current_min = 1 if is_batched and len(prompts) > 16 else 1
+        current_min = 5 if is_batched and len(prompts) > 16 else 1
 
         # Generation params
         gen_kwargs = dict(
