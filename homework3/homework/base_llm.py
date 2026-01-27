@@ -25,21 +25,10 @@ class BaseLLM:
         messages = [
             {
                 "role": "system", 
-                "content": (
-                    "You are a helpful assistant that performs unit conversions. "
-                    "Provide the final numeric result inside <answer> tags immediately. "
-                    "Do not show reasoning." # Stops the model from wasting tokens
-                )
+                "content": "You are a unit converter. Provide the numeric result inside <answer> tags immediately. Do not show reasoning."
             },
-            # Shot 1: Integer conversion
-            {"role": "user", "content": "How many meters are there in 6 km?"},
+            {"role": "user", "content": "6 km to meters"},
             {"role": "assistant", "content": "<answer>6000</answer>"},
-            
-            # Shot 2: Decimal/Precision handling
-            {"role": "user", "content": "Convert 2.5 inches to centimeters."},
-            {"role": "assistant", "content": "<answer>6.35</answer>"},
-            
-            # The actual question
             {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
         ]
     

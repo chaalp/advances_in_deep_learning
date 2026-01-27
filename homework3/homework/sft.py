@@ -26,11 +26,12 @@ def tokenize(tokenizer, question: str, answer: str):
     """
     # This MUST be an exact copy of the messages list in BaseLLM.format_prompt
     messages = [
-        {"role": "system", "content": "You are a helpful assistant that performs unit conversions. Show brief reasoning, then provide the final numeric result inside <answer> tags."},
-        {"role": "user", "content": "How many meters are there in 6 km?"},
-        {"role": "assistant", "content": "1 km = 1000 m, so 6 * 1000 = 6000. <answer>6000</answer>"},
-        {"role": "user", "content": "Convert 2.5 inches to centimeters."},
-        {"role": "assistant", "content": "1 inch is 2.54 cm. 2.5 * 2.54 = 6.35. <answer>6.35</answer>"},
+        {
+            "role": "system", 
+            "content": "You are a unit converter. Provide the numeric result inside <answer> tags immediately. Do not show reasoning."
+        },
+        {"role": "user", "content": "6 km to meters"},
+        {"role": "assistant", "content": "<answer>6000</answer>"},
         {"role": "user", "content": f"{question} Answer with <answer>...</answer>."},
         {"role": "assistant", "content": answer} 
     ]
@@ -61,14 +62,14 @@ def format_example(prompt: str, answer: str) -> dict[str, str]:
     without scientific notation, stripping unnecessary trailing zeros.
     """
     try:
-        # High precision, no scientific notation, stripped clean
+        # Clean numeric formatting
         ans_str = f"{float(answer):.10f}".rstrip("0").rstrip(".")
     except:
         ans_str = str(answer)
 
     return {
         "question": prompt,
-        "answer": f"<answer>{ans_str}</answer>", # No reasoning text here either
+        "answer": f"<answer>{ans_str}</answer>", # No reasoning text
     }
 
 class TokenizedDataset:
