@@ -24,9 +24,13 @@ def tokenize(tokenizer, question: str, answer: str):
     `labels[i] == -100` for the question or masked out parts, since we only want to supervise
     the answer.
     """
-    # This must match your BaseLLM.format_prompt EXACTLY
+    # This MUST match the messages list in BaseLLM.format_prompt exactly
     messages = [
-        {"role": "system", "content": "You are a helpful assistant that performs unit conversions. Provide the final numeric result inside <answer> tags."},
+        {"role": "system", "content": "You are a helpful assistant..."},
+        {"role": "user", "content": "How many meters are there in 6 km?"},
+        {"role": "assistant", "content": "1 km = 1000 m, so 6 * 1000 = 6000. <answer>6000</answer>"},
+        {"role": "user", "content": "Convert 2.5 inches to centimeters."},
+        {"role": "assistant", "content": "1 inch is 2.54 cm. 2.5 * 2.54 = 6.35. <answer>6.35</answer>"},
         {"role": "user", "content": f"{question} Answer with <answer>...</answer>."},
         {"role": "assistant", "content": answer} 
     ]
@@ -61,15 +65,14 @@ def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
     #raise NotImplementedError()
 
-    # 1. Standardize numeric formatting
+    # 1. Clean number formatting
     try:
-        ans_val = float(answer)
-        ans_str = f"{ans_val:g}"
-    except (TypeError, ValueError):
+        ans_str = f"{float(answer):g}"
+    except:
         ans_str = str(answer)
 
-    # 2. Return the RAW components
-    # We will wrap these in the chat template inside the tokenize function
+    # 2. Return raw components
+    # Do NOT add instruction strings; let tokenize/format_prompt handle it
     return {
         "question": prompt,
         "answer": f"<answer>{ans_str}</answer>",
