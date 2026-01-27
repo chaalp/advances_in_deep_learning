@@ -22,13 +22,20 @@ class BaseLLM:
         You don't need to change this function for now.
         """
         # Define the instruction as a system message to guide the model's behavior
+        # Check if we are in "sft" mode or "cot" mode
+        is_cot = getattr(self, "model_name", "") == "cot"
+
+        if is_cot:
+            system_content = "You are a precise unit conversion assistant. Respond with reasoning then the answer inside <answer> tags."
+            assistant_shot = "1 km is 1000m. 6 * 1000 = 6000. <answer>6000</answer>"
+        else:
+            system_content = "You are a unit converter. Provide the numeric result inside <answer> tags immediately. Do not show reasoning."
+            assistant_shot = "<answer>6000</answer>"
+
         messages = [
-            {
-                "role": "system", 
-                "content": "You are a unit converter. Provide the numeric result inside <answer> tags immediately. Do not show reasoning."
-            },
-            {"role": "user", "content": "6 km to meters"},
-            {"role": "assistant", "content": "<answer>6000</answer>"},
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": "How many meters are in 6 km?"},
+            {"role": "assistant", "content": assistant_shot},
             {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
         ]
     
