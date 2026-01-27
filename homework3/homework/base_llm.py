@@ -50,9 +50,9 @@ class BaseLLM:
         )
 
     def parse_answer(self, answer: str) -> float:
-        
-        print("DEBUG: Raw answer:")
-        print(answer)
+
+        #print("DEBUG: Raw answer:")
+        #print(answer)
 
         # 1. Try to find the tag first (Preferred)
         tag_match = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
@@ -60,24 +60,24 @@ class BaseLLM:
             #return float(tag_match.group(1).replace(",", ""))
             value_str = tag_match.group(1)
             value = float(value_str.replace(",", ""))
-            print(f"DEBUG: Found <answer> tag → '{value_str}' → {value}")
+            #print(f"DEBUG: Found <answer> tag → '{value_str}' → {value}")
             return value
 
-        print("DEBUG: <answer> tag not found, falling back to last number")
+        #print("DEBUG: <answer> tag not found, falling back to last number")
 
         # 2. Fallback: Find the VERY LAST number in the text (The "Conclusion")
         # This captures "The answer is 2000" or "Result: 2000"
         numbers = re.findall(r"[-+]?[\d,]*\.?\d+", answer)
-        print(f"DEBUG: Numbers found → {numbers}")
+        #print(f"DEBUG: Numbers found → {numbers}")
 
         if numbers:
             #return float(numbers[-1].replace(",", ""))
             value_str = numbers[-1]
             value = float(value_str.replace(",", ""))
-            print(f"DEBUG: Using last number → '{value_str}' → {value}")
+            #print(f"DEBUG: Using last number → '{value_str}' → {value}")
             return value
 
-        print("DEBUG: No numbers found, returning NaN")
+        #print("DEBUG: No numbers found, returning NaN")
         return float("nan")
 
     def generate(self, prompt: str) -> str:
