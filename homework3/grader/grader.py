@@ -80,19 +80,12 @@ def case(func, kwargs=None, score=1, extra_credit=False, timeout=1000):
             except NotImplementedError:
                 msg = "Not Implemented"
             except AssertionError as e:
-                msg = e.args[0] if e.args else "Assertion failed (no message)"
+                msg = e.args[0]
             except CheckFailed as e:
                 msg = str(e)
             except Exception as e:
-                msg = f"{type(e).__name__}: {str(e)}"
+                msg = type(e).__name__
                 error = traceback.format_exc()
-
-            # --- SINGLE DEBUG POINT ---
-            if v < 1.0 or error:
-                self.logger.debug(f"DEBUG: Case '{func.__name__}' failed!")
-                self.logger.debug(f"DEBUG: Args: {a}")
-                self.logger.debug(f"DEBUG: Reason: {msg}")
-            # --------------------------
 
             total += 1
 
