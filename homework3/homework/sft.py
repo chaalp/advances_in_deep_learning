@@ -24,9 +24,9 @@ def tokenize(tokenizer, question: str, answer: str):
     `labels[i] == -100` for the question or masked out parts, since we only want to supervise
     the answer.
     """
-    # This MUST match the messages list in BaseLLM.format_prompt exactly
+     # This MUST be an exact copy of the messages list in BaseLLM.format_prompt
     messages = [
-        {"role": "system", "content": "You are a helpful assistant..."},
+        {"role": "system", "content": "You are a helpful assistant that performs unit conversions. Show brief reasoning, then provide the final numeric result inside <answer> tags."},
         {"role": "user", "content": "How many meters are there in 6 km?"},
         {"role": "assistant", "content": "1 km = 1000 m, so 6 * 1000 = 6000. <answer>6000</answer>"},
         {"role": "user", "content": "Convert 2.5 inches to centimeters."},
@@ -35,29 +35,21 @@ def tokenize(tokenizer, question: str, answer: str):
         {"role": "assistant", "content": answer} 
     ]
     
-    # 1. Apply template to get the full training string
+    # Apply template and tokenize
     full_text = tokenizer.apply_chat_template(messages, tokenize=False)
+    full = tokenizer(full_text, padding="max_length", truncation=True, max_length=256) # Increased length
     
-    tokenizer.padding_side = "right"
-    tokenizer.pad_token = tokenizer.eos_token
-    
-    # 2. Increase max_length to 256 for template overhead
-    full = tokenizer(full_text, padding="max_length", truncation=True, max_length=256)
-    input_ids = full["input_ids"]
-
-    # 3. Calculate prompt length to mask labels correctly
+    # Calculate prompt length for masking
     prompt_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
     prompt_len = len(tokenizer.encode(prompt_text))
 
-    labels = input_ids.copy()
+    labels = full["input_ids"].copy()
     for i in range(len(labels)):
-        # Mask everything except the actual answer tokens
         if i < prompt_len or full["attention_mask"][i] == 0:
-            labels[i] = -100 
+            labels[i] = -100 # Mask everything except the final answer
             
     full["labels"] = labels
     return full
-
 
 def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
