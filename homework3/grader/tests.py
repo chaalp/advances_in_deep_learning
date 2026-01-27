@@ -124,23 +124,24 @@ class CoTGrader(Grader):
         dataset = self.module.data.Dataset("valid")
         model = self.load_model()
 
-       # --- NEW LOGGING WRAPPER ---
-        original_generate = model.generate
-        
-        def debug_generate(question):
-            # 1. Get the actual model output
-            answer = original_generate(question)
-            
-            # 2. Log them to the console (visible with -vv flag)
-            self.logger.debug(f"\n" + "="*50)
-            self.logger.debug(f"QUESTION: {question}")
-            self.logger.debug(f"RESPONSE: {answer}")
-            self.logger.debug("="*50 + "\n")
-            
-            return answer
+        # --- NEW LOGGING WRAPPER ---
+        original_batched_generate = model.batched_generate
 
-        # Monkey-patch the model instance used by the benchmark
-        model.generate = debug_generate
+        def debug_batched_generate(prompts, num_return_sequences=None, temperature=0):
+            # Get the actual model output
+            responses = original_batched_generate(prompts, num_return_sequences, temperature)
+    
+            # Log each question and response in the batch
+            for q, r in zip(prompts, responses):
+                self.logger.debug(f"\n" + "="*50)
+                self.logger.debug(f"QUESTION: {q}")
+                self.logger.debug(f"RESPONSE: {r}")
+                self.logger.debug("="*50 + "\n")
+    
+            return responses
+
+        # Monkey-patch batched_generate instead of generate
+        model.batched_generate = debug_batched_generate
         # ---------------------------
 
         benchmark_result = self.module.data.benchmark(model, dataset, 100)

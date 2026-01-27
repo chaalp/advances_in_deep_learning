@@ -85,7 +85,10 @@ class BaseLLM:
         - decode the outputs with self.tokenizer.decode
 
         """
-        return self.batched_generate([prompt])[0]
+        #return self.batched_generate([prompt])[0]
+        # 'prompt' here is actually the raw question from the benchmark
+        formatted_prompt = self.format_prompt(prompt) 
+        return self.batched_generate([formatted_prompt])[0]
 
     @overload
     def batched_generate(
