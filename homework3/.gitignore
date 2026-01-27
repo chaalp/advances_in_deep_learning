@@ -1,26 +1,7 @@
 ############################
-# Data
-############################
-data/
-datasets/
-homework3/data/
-
-############################
 # Model checkpoints & artifacts
 ############################
 **/checkpoint-*/
-*.pt
-*.bin
-*.safetensors
-
-############################
-# Trainer / optimizer state
-############################
-trainer_state.json
-optimizer.pt
-scheduler.pt
-training_args.bin
-scaler.pt
 
 ############################
 # Logs
@@ -28,7 +9,3 @@ scaler.pt
 logs/
 *.log
 
-############################
-# Jupyter / Colab
-############################
-.ipynb_checkpoints/
