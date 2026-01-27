@@ -45,8 +45,12 @@ def tokenize(tokenizer, question: str, answer: str):
 
     labels = full["input_ids"].copy()
     for i in range(len(labels)):
-        if i < prompt_len or full["attention_mask"][i] == 0:
-            labels[i] = -100 # Mask everything except the final answer
+        # Mask everything up to the end of the prompt
+        if i < prompt_len:
+            labels[i] = -100
+        # Also mask the padding tokens
+        elif full["attention_mask"][i] == 0:
+            labels[i] = -100
             
     full["labels"] = labels
     return full

@@ -161,12 +161,12 @@ class BaseLLM:
 
         # Generation params
         gen_kwargs = dict(
-            max_new_tokens=64,
+            max_new_tokens=64,     # Reduced for speed/timeout safety
+            min_new_tokens=5,      # Forces the model to generate a response
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.eos_token_id,
             do_sample=True if temperature > 0 else False,
             temperature=temperature if temperature > 0 else None,
-            num_beams=1,
             use_cache=True,
         )
 
