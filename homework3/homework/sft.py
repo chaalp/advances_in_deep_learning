@@ -24,31 +24,37 @@ def tokenize(tokenizer, question: str, answer: str):
     `labels[i] == -100` for the question or masked out parts, since we only want to supervise
     the answer.
     """
-    # Build the full string exactly
-    full_text = f"{question} {answer}{tokenizer.eos_token}"
-
+    # This must match your BaseLLM.format_prompt EXACTLY
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant that performs unit conversions. Provide the final numeric result inside <answer> tags."},
+        {"role": "user", "content": f"{question} Answer with <answer>...</answer>."},
+        {"role": "assistant", "content": answer} 
+    ]
+    
+    # 1. Apply template to get the full training string
+    full_text = tokenizer.apply_chat_template(messages, tokenize=False)
+    
     tokenizer.padding_side = "right"
     tokenizer.pad_token = tokenizer.eos_token
-
-    full = tokenizer(full_text, padding="max_length", truncation=True, max_length=128)
-    input_ids = full["input_ids"]
     
-    # Calculate prompt_len by tokenizing ONLY the question part of the same string
-    prompt_ids = tokenizer(question, add_special_tokens=True)["input_ids"]
-    prompt_len = len(prompt_ids)
+    # 2. Increase max_length to 256 to account for template overhead
+    full = tokenizer(full_text, padding="max_length", truncation=True, max_length=256)
+    input_ids = full["input_ids"]
+
+    # 3. Calculate prompt length to mask labels correctly
+    # We tokenize only up to the assistant's turn to find the split point
+    prompt_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
+    prompt_len = len(tokenizer.encode(prompt_text))
 
     labels = input_ids.copy()
-    # Mask exactly the question tokens so the model only learns the answer
-    for i in range(min(prompt_len, len(labels))):
-        labels[i] = -100
-
-    # Mask padding tokens
-    for i, m in enumerate(full["attention_mask"]):
-        if m == 0:
-            labels[i] = -100
-
+    for i in range(len(labels)):
+        # Mask everything except the actual answer tokens
+        if i < prompt_len or full["attention_mask"][i] == 0:
+            labels[i] = -100 
+            
     full["labels"] = labels
     return full
+
 
 def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
