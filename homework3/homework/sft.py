@@ -166,8 +166,8 @@ def train_model(
         output_dir=output_dir,
         logging_dir=output_dir,
         report_to="tensorboard",
-        learning_rate=1e-4,              # Slightly higher for small model
-        num_train_epochs=3,              # 3-5 is usually sufficient
+        learning_rate=learning_rate,              # Slightly higher for small model
+        num_train_epochs=num_train_epochs,              # 3-5 is usually sufficient
         per_device_train_batch_size=32,
         gradient_accumulation_steps=1,
         warmup_ratio=0.05,               # 5% warmup

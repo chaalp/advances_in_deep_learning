@@ -129,17 +129,33 @@ class CoTGrader(Grader):
 
         def debug_batched_generate(prompts, num_return_sequences=None, temperature=0):
             # Get the actual model output
+            global failed_cases_logged
             responses = original_batched_generate(prompts, num_return_sequences, temperature)
     
-            # Only log if the model is identified as 'sft_model'
-            if getattr(model, "model_name", "") == "sft":
+        
+            # Only log if model is 'sft' and we haven't hit the 10-failure limit
+            if getattr(model, "model_name", "") == "sft" and failed_cases_logged < 10:
                 for q, r in zip(prompts, responses):
-                    self.logger.debug(f"\n" + "="*50)
+                    if failed_cases_logged >= 10:
+                        break
+            
+                # Parse the model's response
+                predicted_val = model.parse_answer(r)
+            
+                # Note: You would ideally compare predicted_val to the actual target here.
+                # If the grader's internal loop is accessible, use that; 
+                # otherwise, logging any case where predicted_val is NaN or clearly wrong:
+            
+                # Simple check for formatted but incorrect/NaN responses
+                if predicted_val is None or str(predicted_val) == "nan":
+                    self.logger.debug(f"\n" + "!"*20 + " FAILED CASE " + "!"*20)
                     self.logger.debug(f"QUESTION: {q}")
                     self.logger.debug(f"RESPONSE: {r}")
-                    self.logger.debug("="*50 + "\n")
+                    self.logger.debug("!"*50 + "\n")
+                    failed_cases_logged += 1
 
             return responses
+
 
         # Monkey-patch batched_generate instead of generate
         model.batched_generate = debug_batched_generate
