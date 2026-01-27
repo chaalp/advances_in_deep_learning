@@ -22,19 +22,27 @@ class BaseLLM:
         You don't need to change this function for now.
         """
         # Define the instruction as a system message to guide the model's behavior
-        # Check if we are in "sft" mode or "cot" mode
+        # Determine if we should use Chain of Thought based on the class attribute
         is_cot = getattr(self, "model_name", "") == "cot"
 
         if is_cot:
-            system_content = "You are a precise unit conversion assistant. Respond with reasoning then the answer inside <answer> tags."
-            assistant_shot = "1 km is 1000m. 6 * 1000 = 6000. <answer>6000</answer>"
+            system_content = (
+                "You are a precise unit conversion assistant. "
+                "First, identify the conversion factor. Second, perform the calculation. "
+                "Finally, provide the numeric result inside <answer> tags. "
+                "Respond with reasoning then the answer."
+            )
+            assistant_shot = "1 kilometer is 1000 meters. So, 5.5 * 1000 = 5500. <answer>5500</answer>"
         else:
-            system_content = "You are a unit converter. Provide the numeric result inside <answer> tags immediately. Do not show reasoning."
+            system_content = (
+                "You are a unit converter. Provide the numeric result inside <answer> tags immediately. "
+                "Do not show reasoning."
+            )
             assistant_shot = "<answer>6000</answer>"
 
         messages = [
             {"role": "system", "content": system_content},
-            {"role": "user", "content": "How many meters are in 6 km?"},
+            {"role": "user", "content": "How many meters are in 6 km?" if not is_cot else "How many meters are in 5.5 km?"},
             {"role": "assistant", "content": assistant_shot},
             {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
         ]
@@ -153,9 +161,16 @@ class BaseLLM:
         )
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
+        # Detect which model variant is running
+        is_cot = getattr(self, "model_name", "") == "cot"
+    
+        # CoT needs more tokens for reasoning (128)
+        # SFT needs fewer tokens (48) to pass the 40s timeout in non-batch mode
+        max_tokens = 128 if is_cot else 48
+
         # Generation params
         gen_kwargs = dict(
-            max_new_tokens=48,     # Reduced for speed/timeout safety
+            max_new_tokens=max_tokens,     # Reduced for speed/timeout safety
             min_new_tokens=1,      # Forces the model to generate a response
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.eos_token_id,
