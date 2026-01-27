@@ -55,21 +55,27 @@ class BaseLLM:
         # 1. Try to extract from the <answer> tag first
         # 2. Fallback to the last numerical value in the string
         tag_match = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
-    
+        print("DEBUG: tag_match found:", bool(tag_match))
+        
         # If no tag, find all numbers and pick the last one
         if tag_match:
             raw_val = tag_match.group(1)
+            print("DEBUG: raw_val from <answer>:", repr(raw_val))
         else:
             numbers = re.findall(r"[-+]?[\d,]*\.?\d+", answer)
             if not numbers:
+                print("DEBUG: no numbers found -> returning NaN")
                 return float("nan")
             raw_val = numbers[-1]
+            print("DEBUG: raw_val from fallback:", repr(raw_val))
 
         try:
             # Clean commas and convert
             val = float(raw_val.replace(",", ""))
             # Return as int if it's a whole number, else float
-            return int(val) if val.is_integer() else val
+            result = int(val) if val.is_integer() else val
+            print("DEBUG: parsed value:", val, "-> returned:", result)
+            return result
         except ValueError:
             return float("nan")
 
