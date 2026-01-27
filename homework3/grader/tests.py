@@ -131,13 +131,14 @@ class CoTGrader(Grader):
             # Get the actual model output
             responses = original_batched_generate(prompts, num_return_sequences, temperature)
     
-            # Log each question and response in the batch
-            #for q, r in zip(prompts, responses):
-                #self.logger.debug(f"\n" + "="*50)
-                #self.logger.debug(f"QUESTION: {q}")
-                #self.logger.debug(f"RESPONSE: {r}")
-                #self.logger.debug("="*50 + "\n")
-    
+            # Only log if the model is identified as 'sft_model'
+            if getattr(model, "model_name", "") == "sft_model":
+                for q, r in zip(prompts, responses):
+                    self.logger.debug(f"\n" + "="*50)
+                    self.logger.debug(f"QUESTION: {q}")
+                    self.logger.debug(f"RESPONSE: {r}")
+                    self.logger.debug("="*50 + "\n")
+
             return responses
 
         # Monkey-patch batched_generate instead of generate
