@@ -57,18 +57,17 @@ def tokenize(tokenizer, question: str, answer: str):
 
 def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
-    Construct a question / answer pair. Consider rounding the answer to make it easier for the LLM.
+    Construct a question / answer pair. This version ensures high precision 
+    without scientific notation, stripping unnecessary trailing zeros.
     """
-    #raise NotImplementedError()
-
-    # 1. Clean number formatting
     try:
-        ans_str = f"{float(answer):g}"
-    except:
+        # Convert to a fixed-point string with 10 decimal places, 
+        # then strip trailing zeros and the decimal point if it becomes empty.
+        ans_str = f"{float(answer):.10f}".rstrip("0").rstrip(".")
+    except (ValueError, TypeError):
+        # Fallback if the answer isn't a standard number
         ans_str = str(answer)
 
-    # 2. Return raw components
-    # Do NOT add instruction strings; let tokenize/format_prompt handle it
     return {
         "question": prompt,
         "answer": f"<answer>{ans_str}</answer>",
