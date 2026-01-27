@@ -80,7 +80,7 @@ class BaseLLM:
                 return int(val)
 
             # normalize decimals (tune decimals if needed)
-            print("DEBUG: parsed value:", val, "-> returned:", round(val, 5))
+            print("DEBUG: parsed value:", val, "-> returned:", round(val, 6))
             return round(val, 5)
 
             
