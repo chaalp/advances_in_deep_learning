@@ -27,16 +27,17 @@ class BaseLLM:
                 "role": "system", 
                 "content": (
                     "You are a helpful assistant that performs unit conversions. "
-                    "Show brief reasoning, then provide the final numeric result inside <answer> tags."
+                    "Provide the final numeric result inside <answer> tags immediately. "
+                    "Do not show reasoning." # Stops the model from wasting tokens
                 )
             },
             # Shot 1: Integer conversion
             {"role": "user", "content": "How many meters are there in 6 km?"},
-            {"role": "assistant", "content": "1 km = 1000 m, so 6 * 1000 = 6000. <answer>6000</answer>"},
+            {"role": "assistant", "content": "<answer>6000</answer>"},
             
             # Shot 2: Decimal/Precision handling
             {"role": "user", "content": "Convert 2.5 inches to centimeters."},
-            {"role": "assistant", "content": "1 inch is 2.54 cm. 2.5 * 2.54 = 6.35. <answer>6.35</answer>"},
+            {"role": "assistant", "content": "<answer>6.35</answer>"},
             
             # The actual question
             {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
@@ -48,10 +49,6 @@ class BaseLLM:
             tokenize=False, 
             add_generation_prompt=True
         )
-
-    import re
-
-    import re
 
     def parse_answer(self, answer: str) -> float:
         # 1. Try to extract from the <answer> tag first
@@ -162,8 +159,8 @@ class BaseLLM:
 
         # Generation params
         gen_kwargs = dict(
-            max_new_tokens=32,     # Reduced for speed/timeout safety
-            min_new_tokens=5,      # Forces the model to generate a response
+            max_new_tokens=48,     # Reduced for speed/timeout safety
+            min_new_tokens=1,      # Forces the model to generate a response
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.eos_token_id,
             do_sample=True if temperature > 0 else False,

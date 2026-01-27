@@ -61,16 +61,14 @@ def format_example(prompt: str, answer: str) -> dict[str, str]:
     without scientific notation, stripping unnecessary trailing zeros.
     """
     try:
-        # Convert to a fixed-point string with 10 decimal places, 
-        # then strip trailing zeros and the decimal point if it becomes empty.
+        # High precision, no scientific notation, stripped clean
         ans_str = f"{float(answer):.10f}".rstrip("0").rstrip(".")
-    except (ValueError, TypeError):
-        # Fallback if the answer isn't a standard number
+    except:
         ans_str = str(answer)
 
     return {
         "question": prompt,
-        "answer": f"<answer>{ans_str}</answer>",
+        "answer": f"<answer>{ans_str}</answer>", # No reasoning text here either
     }
 
 class TokenizedDataset:
