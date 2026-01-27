@@ -50,31 +50,18 @@ class BaseLLM:
         )
 
     def parse_answer(self, answer: str) -> float:
-        if not answer or answer.isspace():
-            return float("nan")
-    
-        # Pre-clean: Remove common unit noise that confuses floats
-        clean_answer = answer.replace("$", "").strip()
-    
-        try:
-            # 1. Standard Tag Match (Updated for Scientific Notation)
-            m = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+(?:[eE][-+]?\d+)?)", clean_answer, re.IGNORECASE)
-            if m:
-                return float(m.group(1).replace(",", ""))
+        # 1. Try to find the tag first (Preferred)
+        tag_match = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
+        if tag_match:
+            return float(tag_match.group(1).replace(",", ""))
 
-            # 2. Fraction Fallback
-            m_frac = re.search(r"(\d+)\s*/\s*(\d+)", clean_answer)
-            if m_frac:
-                return float(m_frac.group(1)) / float(m_frac.group(2))
+        # 2. Fallback: Find the VERY LAST number in the text (The "Conclusion")
+        # This captures "The answer is 2000" or "Result: 2000"
+        numbers = re.findall(r"[-+]?[\d,]*\.?\d+", answer)
+        if numbers:
+            return float(numbers[-1].replace(",", ""))
 
-            # 3. Last Number Fallback (Updated for Scientific Notation)
-            all_nums = re.findall(r"[-+]?[\d,]*\.?\d+(?:[eE][-+]?\d+)?", clean_answer)
-            if all_nums:
-                return float(all_nums[-1].replace(",", ""))
-
-            return float("nan")
-        except (ValueError, TypeError, ZeroDivisionError):
-            return float("nan")
+        return float("nan")
 
     def generate(self, prompt: str) -> str:
         """
