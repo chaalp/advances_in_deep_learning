@@ -189,16 +189,23 @@ class BaseLLM:
             return [decoded[i*k:(i+1)*k] for i in range(n)]
 
         return decoded
-
-
+    
     def answer(self, *questions) -> list[float]:
         """
         Answer questions given as individual string arguments.
         """
         # Convert each question
         prompts = [self.format_prompt(q) for q in questions]
-        generations = self.batched_generate(prompts)
-        return [self.parse_answer(g) for g in generations]
+        # Use a tiny bit of temperature to avoid the "empty string" trap
+        generations = self.batched_generate(prompts, temperature=0.1) 
+    
+        results = []
+        for g in generations:
+            parsed = self.parse_answer(g)
+            # DEBUG PRINT: This will show you exactly why the score is 0
+            # print(f"DEBUG: Gen: '{g}' | Parsed: {parsed}") 
+            results.append(parsed)
+        return results
 
 
 def test_model():
