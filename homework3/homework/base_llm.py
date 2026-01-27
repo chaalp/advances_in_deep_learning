@@ -159,10 +159,17 @@ class BaseLLM:
         )
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
+        # Determine batch status
+        is_batched = len(prompts) > 1
+
+        # reduce length for large batches to save VRAM
+        current_max = 256 if is_batched and len(prompts) > 16 else 256
+        current_min = 1 if is_batched and len(prompts) > 16 else 1
+
         # Generation params
         gen_kwargs = dict(
-            max_new_tokens=128,
-            min_new_tokens=5,
+            max_new_tokens=current_max,
+            min_new_tokens=current_min,
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.eos_token_id,
             do_sample=True if temperature > 0 else False,
