@@ -123,6 +123,20 @@ class CoTGrader(Grader):
         """Test the answer accuracy"""
         dataset = self.module.data.Dataset("valid")
         model = self.load_model()
+
+        # --- ADD THIS DEBUG WRAPPER ---
+        original_generate = model.generate
+        def debug_generate(question):
+            answer = original_generate(question)
+            # This will print every Q&A pair to the console
+            self.logger.debug(f"\n[INPUT QUESTION]: {question}")
+            self.logger.debug(f"[MODEL RESPONSE]: {answer}\n{'-'*40}")
+            return answer
+        
+        # Replace the real method with our debug version
+        model.generate = debug_generate 
+        # ------------------------------
+
         benchmark_result = self.module.data.benchmark(model, dataset, 100)
         print(benchmark_result.accuracy)
 
