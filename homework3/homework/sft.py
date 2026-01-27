@@ -31,8 +31,15 @@ def tokenize(tokenizer, question: str, answer: str):
             "role": "system", 
             "content": "You are a unit converter. Provide the numeric result inside <answer> tags immediately. Do not show reasoning."
         },
+        # Easy example: Powers of 10
         {"role": "user", "content": "6 km to meters"},
         {"role": "assistant", "content": "<answer>6000</answer>"},
+        
+        # Harder example: Multiplication that isn't just adding zeros
+        {"role": "user", "content": "How many seconds are in 2 hours?"},
+        {"role": "assistant", "content": "<answer>7200</answer>"},
+
+        # The target question
         {"role": "user", "content": f"{question} Answer with <answer>...</answer>."},
         {"role": "assistant", "content": answer} 
     ]

@@ -209,15 +209,10 @@ class BaseLLM:
         """
         # Convert each question
         prompts = [self.format_prompt(q) for q in questions]
-        # Use a tiny bit of temperature to avoid the "empty string" trap
-        generations = self.batched_generate(prompts, temperature=0.1) 
-    
-        results = []
-        for g in generations:
-            parsed = self.parse_answer(g)
-            # print(f"DEBUG: Gen: '{g}' | Parsed: {parsed}") 
-            results.append(parsed)
-        return results
+        
+        # FORCE temperature 0 and ensure no sampling
+        generations = self.batched_generate(prompts, temperature=0) 
+        return [self.parse_answer(g) for g in generations]
 
 
 def test_model():
