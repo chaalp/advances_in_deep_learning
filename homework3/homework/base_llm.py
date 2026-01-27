@@ -50,26 +50,30 @@ class BaseLLM:
         )
 
     def parse_answer(self, answer: str) -> float:
-        """
-        Parse the <answer></answer> tag and return a float.
-        This function is somewhat robust to output errors (e.g. missing </answer> tags).
-        """
-        if not answer or answer.isspace(): # Handle the empty string from your log
+        if not answer or answer.isspace():
             return float("nan")
     
+        # Pre-clean: Remove common unit noise that confuses floats
+        clean_answer = answer.replace("$", "").strip()
+    
         try:
-            # Prioritize the tag
-            m = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
+            # 1. Standard Tag Match (Updated for Scientific Notation)
+            m = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+(?:[eE][-+]?\d+)?)", clean_answer, re.IGNORECASE)
             if m:
                 return float(m.group(1).replace(",", ""))
 
-            # Fallback to the LAST number (the conclusion) if tag is missing
-            all_nums = re.findall(r"[-+]?[\d,]*\.?\d+", answer)
+            # 2. Fraction Fallback
+            m_frac = re.search(r"(\d+)\s*/\s*(\d+)", clean_answer)
+            if m_frac:
+                return float(m_frac.group(1)) / float(m_frac.group(2))
+
+            # 3. Last Number Fallback (Updated for Scientific Notation)
+            all_nums = re.findall(r"[-+]?[\d,]*\.?\d+(?:[eE][-+]?\d+)?", clean_answer)
             if all_nums:
                 return float(all_nums[-1].replace(",", ""))
 
             return float("nan")
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, ZeroDivisionError):
             return float("nan")
 
     def generate(self, prompt: str) -> str:
