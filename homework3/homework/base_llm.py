@@ -162,7 +162,7 @@ class BaseLLM:
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         # Detect which model variant is running
-        is_cot = getattr(self, "model_name", "") == "cot"
+        is_cot = getattr(self, "model_name", "") in ["cot", "rft"]
     
         # CoT needs more tokens for reasoning (128)
         # SFT needs fewer tokens (48) to pass the 40s timeout in non-batch mode
