@@ -66,7 +66,7 @@ def train_model(
     train_dataset = TokenizedDataset(llm.tokenizer, trainset, format_rft_example)
 
     # LoRA params
-    lora_r = int(kwargs.get("lora_r", 16))
+    lora_r = int(kwargs.get("lora_r", 32))
     lora_alpha = int(kwargs.get("lora_alpha", 64))
     lora_dropout = float(kwargs.get("lora_dropout", 0.05))
 
