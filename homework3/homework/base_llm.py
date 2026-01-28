@@ -23,9 +23,9 @@ class BaseLLM:
         """
         # Define the instruction as a system message to guide the model's behavior
         # Determine if we should use Chain of Thought based on the class attribute
-        is_cot = getattr(self, "model_name", "") == "cot"
+        is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
 
-        if is_cot:
+        if is_reasoning_model:
             system_content = (
                 "You are a precise unit conversion assistant. "
                 "First, identify the conversion factor. Second, perform the calculation. "
@@ -42,7 +42,7 @@ class BaseLLM:
 
         messages = [
             {"role": "system", "content": system_content},
-            {"role": "user", "content": "How many meters are in 6 km?" if not is_cot else "How many meters are in 5.5 km?"},
+            {"role": "user", "content": "How many meters are in 6 km?" if not is_reasoning_model else "How many meters are in 5.5 km?"},
             {"role": "assistant", "content": assistant_shot},
             {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
         ]
@@ -162,11 +162,11 @@ class BaseLLM:
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         # Detect which model variant is running
-        is_cot = getattr(self, "model_name", "") in ["cot", "rft"]
+        is_cot_or_rft = getattr(self, "model_name", "") in ["cot", "rft"]
     
         # CoT needs more tokens for reasoning (128)
         # SFT needs fewer tokens (48) to pass the 40s timeout in non-batch mode
-        max_tokens = 128 if is_cot else 48
+        max_tokens = 128 if is_cot_or_rft else 48
 
         # Generation params
         gen_kwargs = dict(
