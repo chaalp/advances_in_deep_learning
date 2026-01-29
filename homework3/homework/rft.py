@@ -56,7 +56,14 @@ def train_model(
 
     def format_rft_example(prompt: str, reasoning: str) -> dict[str, str]:
         # Here "answer" field is actually reasoning+answer text, supervised fully after the question
-        return {"question": prompt + " Answer with <answer>...</answer>.", "answer": reasoning}
+        #return {"question": prompt + " Answer with <answer>...</answer>.", "answer": reasoning}
+
+        # Stop manually appending the string here. 
+        # Let BaseLLM.format_prompt handle the formatting consistency.
+        return {
+            "question": prompt, 
+            "answer": reasoning
+        }
 
 
     trainset = RFTDataset(rft_data)
@@ -113,7 +120,7 @@ def train_model(
         logging_dir=output_dir,
         report_to="tensorboard",
         learning_rate=learning_rate,              # Slightly higher for small model
-        num_train_epochs=num_train_epochs,              # 3-5 is usually sufficient
+        num_train_epochs=num_train_epochs,        # 3-5 is usually sufficient
         per_device_train_batch_size=32,
         gradient_accumulation_steps=1,
         warmup_ratio=0.05,               # 5% warmup
