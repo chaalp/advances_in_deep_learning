@@ -56,14 +56,14 @@ def train_model(
 
     def format_rft_example(prompt: str, reasoning: str) -> dict[str, str]:
         # Here "answer" field is actually reasoning+answer text, supervised fully after the question
-        #return {"question": prompt + " Answer with <answer>...</answer>.", "answer": reasoning}
+        return {"question": prompt + " Answer with <answer>...</answer>.", "answer": reasoning}
 
         # Stop manually appending the string here. 
         # Let BaseLLM.format_prompt handle the formatting consistency.
-        return {
-            "question": prompt, 
-            "answer": reasoning
-        }
+        #return {
+        #    "question": prompt, 
+        #    "answer": reasoning
+        #}
 
 
     trainset = RFTDataset(rft_data)

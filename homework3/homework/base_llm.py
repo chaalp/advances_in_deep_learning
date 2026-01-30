@@ -166,7 +166,7 @@ class BaseLLM:
     
         # CoT needs more tokens for reasoning (128)
         # SFT needs fewer tokens (48) to pass the 40s timeout in non-batch mode
-        max_tokens = 256 if is_cot_or_rft else 48
+        max_tokens = 128 if is_cot_or_rft else 48
 
         # Generation params
         gen_kwargs = dict(
