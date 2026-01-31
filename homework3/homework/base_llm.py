@@ -10,9 +10,19 @@ device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is
 
 
 class BaseLLM:
-    def __init__(self, checkpoint=checkpoint):
+    def __init__(self, checkpoint=checkpoint, quantization_config=None):
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-        self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)
+        # Pass the quantization_config and use device_map="auto" for 8-bit
+        self.model = AutoModelForCausalLM.from_pretrained(
+            checkpoint,
+            quantization_config=quantization_config,
+            device_map="auto" if quantization_config else None
+        )
+        
+        # If not quantizing, manually move to device as before
+        if not quantization_config:
+            self.model = self.model.to(device)
+            
         self.device = device
 
     def format_prompt(self, question: str) -> str:
@@ -159,7 +169,10 @@ class BaseLLM:
             truncation=True,
             return_tensors="pt",
         )
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        #inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        # To this (more robust for auto device maps):
+        inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
 
         # Detect which model variant is running
         is_cot_or_rft = getattr(self, "model_name", "") in ["cot", "rft"]

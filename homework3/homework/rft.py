@@ -31,8 +31,8 @@ def train_model(
     from pathlib import Path
 
     import torch
-    from transformers import Trainer, TrainingArguments, default_data_collator
-    from peft import LoraConfig, get_peft_model
+    from transformers import Trainer, TrainingArguments, default_data_collator, BitsAndBytesConfig
+    from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training # Added import
 
     from .data import DATA_DIR
     from .sft import TokenizedDataset, tokenize
@@ -58,7 +58,6 @@ def train_model(
         # Here "answer" field is actually reasoning+answer text, supervised fully after the question
         return {"question": prompt + " Answer with <answer>...</answer>.", "answer": reasoning}
 
-        # Stop manually appending the string here. 
         # Let BaseLLM.format_prompt handle the formatting consistency.
         #return {
         #    "question": prompt, 
@@ -68,7 +67,18 @@ def train_model(
 
     trainset = RFTDataset(rft_data)
 
-    llm = BaseLLM()
+    # 1. Define 8-bit Config
+    bnb_config = BitsAndBytesConfig(
+        load_in_8bit=True,
+        llm_int8_threshold=6.0,
+    )
+
+    # 2. Load model with config
+    llm = BaseLLM(quantization_config=bnb_config)
+
+    # 3. Prepare model for k-bit training
+    # This casts necessary layers to float32 for stability
+    llm.model = prepare_model_for_kbit_training(llm.model)
 
     train_dataset = TokenizedDataset(llm.tokenizer, trainset, format_rft_example)
 
@@ -116,6 +126,7 @@ def train_model(
 
     # Training args
     args = TrainingArguments(
+        optim="adamw_bnb_8bit", #Use optim="adamw_bnb_8bit" to save even more VRAM
         output_dir=output_dir,
         logging_dir=output_dir,
         report_to="tensorboard",
