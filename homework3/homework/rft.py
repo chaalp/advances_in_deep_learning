@@ -83,7 +83,7 @@ def train_model(
     train_dataset = TokenizedDataset(llm.tokenizer, trainset, format_rft_example)
 
     # LoRA params
-    lora_r = int(kwargs.get("lora_r", 32))
+    lora_r = int(kwargs.get("lora_r", 16))
     lora_alpha = int(kwargs.get("lora_alpha", 64))
     lora_dropout = float(kwargs.get("lora_dropout", 0.05))
 
@@ -91,7 +91,8 @@ def train_model(
         r=lora_r,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
-        target_modules=["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        #target_modules=["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        target_modules=["q_proj", "v_proj"],
         bias="none",
         task_type="CAUSAL_LM",
     )
