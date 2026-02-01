@@ -79,7 +79,7 @@ class BaseLLM:
             add_generation_prompt=True
         )
 
-'''
+    '''
     def parse_answer(self, answer: str) -> float:
         # 1. Try to extract from the <answer> tag first
         # 2. Fallback to the last numerical value in the string
@@ -100,7 +100,8 @@ class BaseLLM:
             return int(val) if val.is_integer() else val
         except ValueError:
             return float("nan")
-'''
+    '''
+    
     def parse_answer(self, answer: str) -> float:
         # 1. Look for the <answer> tag, allowing for case insensitivity and whitespace
         tag_match = re.search(r"<answer>\s*(.*?)\s*</answer>", answer, re.IGNORECASE | re.DOTALL)
