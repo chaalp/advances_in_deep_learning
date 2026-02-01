@@ -15,6 +15,18 @@ device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is
 class BaseLLM:
     def __init__(self, checkpoint=checkpoint, quantization_config=None):
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+
+        # Add a default ChatML template if one isn't set
+        if self.tokenizer.chat_template is None:
+            self.tokenizer.chat_template = (
+                "{% for message in messages %}"
+                "{{ '<|im_start|>' + message['role'] + '\\n' + message['content'] + '<|im_end|>\\n' }}"
+                "{% endfor %}"
+                "{% if add_generation_prompt %}"
+                "{{ '<|im_start|>assistant\\n' }}"
+                "{% endif %}"
+            )
+
         # Pass the quantization_config and use device_map="auto" for 8-bit
         self.model = AutoModelForCausalLM.from_pretrained(
             checkpoint,
