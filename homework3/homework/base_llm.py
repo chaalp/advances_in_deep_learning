@@ -79,6 +79,7 @@ class BaseLLM:
             add_generation_prompt=True
         )
 
+'''
     def parse_answer(self, answer: str) -> float:
         # 1. Try to extract from the <answer> tag first
         # 2. Fallback to the last numerical value in the string
@@ -99,7 +100,30 @@ class BaseLLM:
             return int(val) if val.is_integer() else val
         except ValueError:
             return float("nan")
+'''
+    def parse_answer(self, answer: str) -> float:
+        # 1. Look for the <answer> tag, allowing for case insensitivity and whitespace
+        tag_match = re.search(r"<answer>\s*(.*?)\s*</answer>", answer, re.IGNORECASE | re.DOTALL)
+    
+        if tag_match:
+            raw_val = tag_match.group(1)
+        else:
+            # 2. Fallback: find all numbers in the string if no tags are found
+            # This regex handles decimals and negative signs
+            numbers = re.findall(r"[-+]?\d*\.?\d+", answer)
+            if not numbers:
+                return float("nan")
+            raw_val = numbers[-1] # Assume the last number mentioned is the final answer
 
+        # 3. Clean the string of commas and non-numeric characters (like units)
+        clean_val = re.sub(r"[^\d.-]", "", raw_val)
+
+        try:
+            val = float(clean_val)
+            return int(val) if val.is_integer() else val
+        except ValueError:
+            return float("nan")
+        
     def generate(self, prompt: str) -> str:
         """
         (Optional) Implement this method first and then implement batched_generate below.
