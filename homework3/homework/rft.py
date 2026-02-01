@@ -67,12 +67,11 @@ def train_model(
 
     trainset = RFTDataset(rft_data)
 
-    # 1. Define 4-bit Config
+    # 1. Define 8-bit Config
     bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",          # Options: "fp4" or "nf4"
-        bnb_4bit_use_double_quant=True,     # Quantizes the quantization constants for extra savings
-        bnb_4bit_compute_dtype=torch.bfloat16 # Speeds up computation if your GPU supports it
+        load_in_8bit=True,
+        llm_int8_threshold=6.0,  # Default threshold for outlier weights
+        llm_int8_has_fp16_weight=False,
     )
 
     # 2. Load model with config
@@ -161,7 +160,7 @@ def train_model(
     trainer.model.save_pretrained(
         output_dir, 
         safe_serialization=True, 
-        is_main_process=True
+        variant="8bit"  # Flags the file to stay small on disk
     )
 
     # Reuse the same evaluator from SFT
