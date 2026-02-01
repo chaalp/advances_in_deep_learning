@@ -67,10 +67,12 @@ def train_model(
 
     trainset = RFTDataset(rft_data)
 
-    # 1. Define 8-bit Config
+    # 1. Define 4-bit Config
     bnb_config = BitsAndBytesConfig(
-        load_in_8bit=True,
-        llm_int8_threshold=6.0,
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",          # Options: "fp4" or "nf4"
+        bnb_4bit_use_double_quant=True,     # Quantizes the quantization constants for extra savings
+        bnb_4bit_compute_dtype=torch.bfloat16 # Speeds up computation if your GPU supports it
     )
 
     # 2. Load model with config

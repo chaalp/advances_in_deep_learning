@@ -138,10 +138,12 @@ def train_model(
 
     trainset = Dataset("train")
 
-    # 1. Define the 8-bit configuration
+    # 1. Define the 4-bit configuration
     bnb_config = BitsAndBytesConfig(
-        load_in_8bit=True,
-        llm_int8_threshold=6.0,
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",          # Options: "fp4" or "nf4"
+        bnb_4bit_use_double_quant=True,     # Quantizes the quantization constants for extra savings
+        bnb_4bit_compute_dtype=torch.bfloat16 # Speeds up computation if your GPU supports it
     )
 
     # 2. Load the base model with the config
@@ -156,7 +158,7 @@ def train_model(
         r=lora_r,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
-        target_modules=["q_proj", "v_proj"],
+        target_modules=["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         bias="none",
         task_type="CAUSAL_LM",
     )
