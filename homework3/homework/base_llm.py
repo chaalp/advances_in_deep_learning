@@ -165,7 +165,7 @@ class BaseLLM:
         # Depending on your GPU batched generation will use a lot of memory.
         # If you run out of memory, try to reduce the micro_batch_size.
 
-        micro_batch_size = 32
+        micro_batch_size = 16
         if len(prompts) > micro_batch_size:
             out = []
             for i in range(0, len(prompts), micro_batch_size):
@@ -173,6 +173,9 @@ class BaseLLM:
             return out
         
         #raise NotImplementedError()
+
+        # Before the core generation, clear fragmentation
+        torch.cuda.empty_cache()
 
         self.tokenizer.padding_side = "left"
         self.tokenizer.pad_token = self.tokenizer.eos_token
