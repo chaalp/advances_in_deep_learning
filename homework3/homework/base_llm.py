@@ -103,26 +103,25 @@ class BaseLLM:
     '''
 
     def parse_answer(self, answer: str) -> float:
-        # 1. Search for content inside <answer> tags (case-insensitive)
-        # Using raw strings r"" prevents invalid escape sequence warnings
+        import re
+        # 1. Use raw strings (r"") and the 'DOTALL' flag to search across multiple lines
+        # This specifically targets the <answer> tag while ignoring whitespace \s
         tag_match = re.search(r"<answer>\s*(.*?)\s*</answer>", answer, re.IGNORECASE | re.DOTALL)
     
         if tag_match:
             raw_val = tag_match.group(1)
         else:
-            # 2. Fallback: find all numbers (handles decimals and signs)
+            # 2. Fallback: find all numbers including decimals and signs
             numbers = re.findall(r"[-+]?\d*\.?\d+", answer)
             if not numbers:
                 return float("nan")
             raw_val = numbers[-1]
 
         # 3. Strip everything except numbers, decimal points, and minus signs
-        # This removes units like 'meters' or 'km' that might be inside the tag
         clean_val = re.sub(r"[^\d.-]", "", raw_val)
 
         try:
             val = float(clean_val)
-            # Return as int if it's a whole number for cleaner output
             return int(val) if val.is_integer() else val
         except ValueError:
             return float("nan")
