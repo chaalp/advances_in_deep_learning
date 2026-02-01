@@ -214,7 +214,12 @@ def train_model(
     trainer.train()
 
     # Save ONLY the adapter (PeftModel)
-    trainer.model.save_pretrained(output_dir)
+    # This saves the model in a way that remains small on disk
+    trainer.model.save_pretrained(
+        output_dir, 
+        safe_serialization=True, 
+        is_main_process=True
+    )
 
     test_model(output_dir)
 

@@ -156,7 +156,13 @@ def train_model(
     )
 
     trainer.train()
-    trainer.model.save_pretrained(output_dir)
+
+    # This saves the model in a way that remains small on disk
+    trainer.model.save_pretrained(
+        output_dir, 
+        safe_serialization=True, 
+        is_main_process=True
+    )
 
     # Reuse the same evaluator from SFT
     test_model(output_dir)
