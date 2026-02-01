@@ -169,10 +169,10 @@ class BaseLLM:
             truncation=True,
             return_tensors="pt",
         )
-        #inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         # To this (more robust for auto device maps):
-        inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
+        #inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
 
         # Detect which model variant is running
         is_cot_or_rft = getattr(self, "model_name", "") in ["cot", "rft"]
