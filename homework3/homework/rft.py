@@ -84,7 +84,7 @@ def train_model(
 
     # LoRA params
     lora_r = int(kwargs.get("lora_r", 16))
-    lora_alpha = int(kwargs.get("lora_alpha", 64))
+    lora_alpha = int(kwargs.get("lora_alpha", 16))
     lora_dropout = float(kwargs.get("lora_dropout", 0.05))
 
     lora_cfg = LoraConfig(
