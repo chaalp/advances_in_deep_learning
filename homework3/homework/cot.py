@@ -40,12 +40,6 @@ class CoTModel(BaseLLM):
 
         return self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
 
-
-def load() -> CoTModel:
-    model = CoTModel()
-    model.model_name = "cot"  # Triggers CoT logic in BaseLLM
-    return model
-
 def load(checkpoint: str = None) -> CoTModel:
     model = CoTModel(checkpoint=checkpoint)
     model.model_name = "cot"

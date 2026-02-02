@@ -10,6 +10,8 @@ device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is
 
 class BaseLLM:
     def __init__(self, checkpoint=checkpoint):
+        if checkpoint is None:
+            checkpoint = "HuggingFaceTB/SmolLM2-360M-Instruct"
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
         self.model = AutoModelForCausalLM.from_pretrained(
             checkpoint, 
@@ -158,13 +160,13 @@ class BaseLLM:
         inputs = self.tokenizer(prompts, padding=True, return_tensors="pt").to(self.device)
         input_length = inputs["input_ids"].shape[1]
 
-        is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
+        is_reasoning_model = getattr(self, "model_name", "") in ["rft"]
         max_tokens = 128 if is_reasoning_model else 48
 
         # Call model.generate
         output_ids = self.model.generate(
             **inputs,
-            max_new_tokens=48,
+            max_new_tokens=max_tokens,
             do_sample=temperature > 0,
             temperature=temperature if temperature > 0 else 1.0,
             num_return_sequences=num_return_sequences or 1,
