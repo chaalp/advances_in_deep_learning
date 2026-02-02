@@ -19,7 +19,9 @@ class CoTModel(BaseLLM):
 
 
 def load() -> CoTModel:
-    return CoTModel()
+    model = CoTModel()
+    model.model_name = "cot"  # Triggers CoT logic in BaseLLM
+    return model
 
 
 def test_model():

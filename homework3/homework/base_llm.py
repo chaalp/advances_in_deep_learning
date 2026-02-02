@@ -116,10 +116,13 @@ class BaseLLM:
         inputs = self.tokenizer(prompts, padding=True, return_tensors="pt").to(self.device)
         input_length = inputs["input_ids"].shape[1]
 
+        is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
+        max_tokens = 256 if is_reasoning_model else 48
+
         # Call model.generate
         output_ids = self.model.generate(
             **inputs,
-            max_new_tokens=48,  # Reduced from 128
+            max_new_tokens=max_tokens,
             do_sample=temperature > 0,
             temperature=temperature if temperature > 0 else 1.0,
             num_return_sequences=num_return_sequences or 1,

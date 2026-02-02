@@ -13,6 +13,8 @@ def load() -> BaseLLM:
     model_path = Path(__file__).parent / model_name
 
     llm = BaseLLM()
+    llm.model_name = "sft"
+    
     llm.model = PeftModel.from_pretrained(llm.model, model_path).to(llm.device)
     llm.model.eval()
 
