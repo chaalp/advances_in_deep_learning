@@ -101,6 +101,8 @@ def train_model(
     llm.model = get_peft_model(llm.model, config)
     llm.model.enable_input_require_grads()
 
+    llm.model.config.use_cache = False
+
     train_data = Dataset("train")
     train_dataset = TokenizedDataset(llm.tokenizer, train_data, format_example)
 
@@ -112,7 +114,8 @@ def train_model(
         gradient_checkpointing=True,
         logging_dir=output_dir,
         report_to="tensorboard",
-        save_strategy="epoch"
+        save_strategy="epoch",
+        label_names=["labels"],
     )
 
     trainer = Trainer(

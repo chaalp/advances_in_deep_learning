@@ -17,7 +17,7 @@ def load() -> BaseLLM:
 
     llm = BaseLLM()
     llm.model_name = "rft"
-    
+
     llm.model = PeftModel.from_pretrained(llm.model, model_path).to(llm.device)
     llm.model.eval()
 
@@ -65,6 +65,8 @@ def train_model(
     llm.model = get_peft_model(llm.model, config)
     llm.model.enable_input_require_grads()
 
+    llm.model.config.use_cache = False
+
     training_args = TrainingArguments(
         output_dir=output_dir,
         per_device_train_batch_size=16,
@@ -73,7 +75,8 @@ def train_model(
         gradient_checkpointing=True,
         logging_dir=output_dir,
         save_strategy="epoch",
-        report_to="tensorboard"
+        report_to="tensorboard",
+        label_names=["labels"],
     )
 
     trainer = Trainer(

@@ -122,7 +122,7 @@ class BaseLLM:
         # Call model.generate
         output_ids = self.model.generate(
             **inputs,
-            max_new_tokens=max_tokens,
+            max_new_tokens=48,
             do_sample=temperature > 0,
             temperature=temperature if temperature > 0 else 1.0,
             num_return_sequences=num_return_sequences or 1,
