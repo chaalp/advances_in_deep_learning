@@ -67,7 +67,7 @@ def train_model(
         output_dir=output_dir,
         per_device_train_batch_size=16,
         learning_rate=1e-4,
-        num_train_epochs=3,
+        num_train_epochs=5,
         gradient_checkpointing=True,
         logging_dir=output_dir,
         save_strategy="epoch",
