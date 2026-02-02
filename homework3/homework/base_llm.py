@@ -119,7 +119,7 @@ class BaseLLM:
         # Call model.generate
         output_ids = self.model.generate(
             **inputs,
-            max_new_tokens=64,  # Reduced from 128
+            max_new_tokens=48,  # Reduced from 128
             use_cache=True,      # Explicitly enable caching
             do_sample=temperature > 0,
             temperature=temperature if temperature > 0 else 1.0,
