@@ -25,10 +25,9 @@ class BaseLLM:
         better if you provide a chat template. self.tokenizer.apply_chat_template can help here
         You don't need to change this function for now.
         """
-        return question
+        #return question
        
-        '''
-        is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
+        is_reasoning_model = getattr(self, "model_name", "") in ["rft"]
 
         if is_reasoning_model:
             system_content = (
@@ -58,7 +57,7 @@ class BaseLLM:
             tokenize=False, 
             add_generation_prompt=True
         )
-        '''    
+        
     def parse_answer(self, answer: str) -> float:
         """
         Parse the <answer></answer> tag and return a float.
@@ -133,7 +132,7 @@ class BaseLLM:
         # Depending on your GPU batched generation will use a lot of memory.
         # If you run out of memory, try to reduce the micro_batch_size.
 
-        micro_batch_size = 8
+        micro_batch_size = 16
 
         #if len(prompts) > micro_batch_size:
         #    return [
@@ -166,7 +165,7 @@ class BaseLLM:
         # Call model.generate
         output_ids = self.model.generate(
             **inputs,
-            max_new_tokens=max_tokens,
+            max_new_tokens=48,
             do_sample=temperature > 0,
             temperature=temperature if temperature > 0 else 1.0,
             num_return_sequences=num_return_sequences or 1,
