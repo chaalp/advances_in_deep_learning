@@ -23,9 +23,9 @@ class BaseLLM:
         better if you provide a chat template. self.tokenizer.apply_chat_template can help here
         You don't need to change this function for now.
         """
-        #return question
-        print("format_prompt ", getattr(self, "model_name", ""))
-
+        return question
+       
+        '''
         is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
 
         if is_reasoning_model:
@@ -56,7 +56,7 @@ class BaseLLM:
             tokenize=False, 
             add_generation_prompt=True
         )
-
+        '''    
     def parse_answer(self, answer: str) -> float:
         """
         Parse the <answer></answer> tag and return a float.
@@ -158,15 +158,13 @@ class BaseLLM:
         inputs = self.tokenizer(prompts, padding=True, return_tensors="pt").to(self.device)
         input_length = inputs["input_ids"].shape[1]
 
-        print("batched_generate ", getattr(self, "model_name", ""))
-
         is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
         max_tokens = 128 if is_reasoning_model else 48
 
         # Call model.generate
         output_ids = self.model.generate(
             **inputs,
-            max_new_tokens=max_tokens,
+            max_new_tokens=48,
             do_sample=temperature > 0,
             temperature=temperature if temperature > 0 else 1.0,
             num_return_sequences=num_return_sequences or 1,
