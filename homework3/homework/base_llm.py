@@ -105,6 +105,8 @@ class BaseLLM:
                 for r in self.batched_generate(prompts[idx : idx + micro_batch_size], num_return_sequences, temperature)
             ]
 
+         #raise NotImplementedError()
+         
         self.tokenizer.padding_side = "left"
         self.tokenizer.pad_token = self.tokenizer.eos_token
         
@@ -131,8 +133,7 @@ class BaseLLM:
             return [decoded[i : i + num_return_sequences] for i in range(0, len(decoded), num_return_sequences)]
         
         return decoded
-    
-        #raise NotImplementedError()
+
 
     def answer(self, *questions) -> list[float]:
         """
