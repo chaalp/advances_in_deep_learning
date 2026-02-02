@@ -46,6 +46,10 @@ def load() -> CoTModel:
     model.model_name = "cot"  # Triggers CoT logic in BaseLLM
     return model
 
+def load(checkpoint: str = None) -> CoTModel:
+    model = CoTModel(checkpoint=checkpoint)
+    model.model_name = "cot"
+    return model 
 
 def test_model():
     from .data import Dataset, benchmark

@@ -23,7 +23,39 @@ class BaseLLM:
         better if you provide a chat template. self.tokenizer.apply_chat_template can help here
         You don't need to change this function for now.
         """
-        return question
+        #return question
+        print("format_prompt ", getattr(self, "model_name", ""))
+
+        is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
+
+        if is_reasoning_model:
+            system_content = (
+                "You are a precise unit conversion assistant. "
+                "First, identify the conversion factor. Second, perform the calculation. "
+                "Finally, provide the numeric result inside <answer> tags. "
+                "Respond with reasoning then the answer."
+            )
+            assistant_shot = "1 kilometer is 1000 meters. So, 5.5 * 1000 = 5500. <answer>5500</answer>"
+        else:
+            system_content = (
+                "You are a unit converter. Provide the numeric result inside <answer> tags immediately. "
+                "Do not show reasoning."
+            )
+            assistant_shot = "<answer>6000</answer>"
+
+        messages = [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": "How many meters are in 6 km?" if not is_reasoning_model else "How many meters are in 5.5 km?"},
+            {"role": "assistant", "content": assistant_shot},
+            {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
+        ]
+    
+        # apply_chat_template adds the necessary special tokens for SmolLM2
+        return self.tokenizer.apply_chat_template(
+            messages, 
+            tokenize=False, 
+            add_generation_prompt=True
+        )
 
     def parse_answer(self, answer: str) -> float:
         """
@@ -93,22 +125,32 @@ class BaseLLM:
         Pro Tip: Only batch_decode generated tokens by masking out the inputs with
                  outputs[:, len(inputs["input_ids"][0]) :]
         """
-        from tqdm import tqdm  # Importing tqdm for progress bar
+        #from tqdm import tqdm  # Importing tqdm for progress bar
 
         # Preventing OOM
         # Depending on your GPU batched generation will use a lot of memory.
         # If you run out of memory, try to reduce the micro_batch_size.
+
         micro_batch_size = 8
+
+        #if len(prompts) > micro_batch_size:
+        #    return [
+        #        r
+        #        for idx in tqdm(
+        #            range(0, len(prompts), micro_batch_size), desc=f"LLM Running on Micro Batches {micro_batch_size}"
+        #        )
+        #        for r in self.batched_generate(prompts[idx : idx + micro_batch_size], num_return_sequences, temperature)
+        #    ]
+        
         if len(prompts) > micro_batch_size:
-            return [
-                r
-                for idx in tqdm(
-                    range(0, len(prompts), micro_batch_size), desc=f"LLM Running on Micro Batches {micro_batch_size}"
-                )
-                for r in self.batched_generate(prompts[idx : idx + micro_batch_size], num_return_sequences, temperature)
-            ]
+            out = []
+            for i in range(0, len(prompts), micro_batch_size):
+                out.extend(self.batched_generate(prompts[i:i+micro_batch_size], num_return_sequences, temperature))
+            return out
 
          #raise NotImplementedError()
+
+        torch.cuda.empty_cache()
 
         self.tokenizer.padding_side = "left"
         self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -116,13 +158,15 @@ class BaseLLM:
         inputs = self.tokenizer(prompts, padding=True, return_tensors="pt").to(self.device)
         input_length = inputs["input_ids"].shape[1]
 
+        print("batched_generate ", getattr(self, "model_name", ""))
+
         is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
-        max_tokens = 256 if is_reasoning_model else 48
+        max_tokens = 128 if is_reasoning_model else 48
 
         # Call model.generate
         output_ids = self.model.generate(
             **inputs,
-            max_new_tokens=48,
+            max_new_tokens=max_tokens,
             do_sample=temperature > 0,
             temperature=temperature if temperature > 0 else 1.0,
             num_return_sequences=num_return_sequences or 1,
