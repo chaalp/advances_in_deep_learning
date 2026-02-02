@@ -18,8 +18,12 @@ class CoTModel(BaseLLM):
         return self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
 
 
-def load() -> CoTModel:
-    return CoTModel()
+#def load() -> CoTModel:
+#    return CoTModel()
+
+# Update load to accept the checkpoint argument
+def load(checkpoint: str = None) -> CoTModel:
+    return CoTModel(checkpoint=checkpoint)
 
 
 def test_model():
