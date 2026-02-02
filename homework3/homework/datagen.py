@@ -5,17 +5,19 @@ from .data import Dataset, is_answer_valid
 def generate_dataset(output_json: str, oversample: int = 10, temperature: float = 0.6):
     #raise NotImplementedError()
 
-    # Use the 1.7B model for higher quality reasoning rollouts
     checkpoint = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
-    model = CoTModel(checkpoint=checkpoint) 
+    model = CoTModel(checkpoint=checkpoint) # This must be the CoTModel from Part 2
     
     dataset = Dataset("train")
     rft_data = []
 
-    questions = [item[0] for item in dataset]
-    # Generate diverse reasoning paths
+    # Format questions into Chat Prompts
+    # This uses your Part 2 implementation of format_prompt
+    prompts = [model.format_prompt(item[0]) for item in dataset]
+
+    # Generate results (Temperature 0.8 is better for diversity in RFT)
     results = model.batched_generate(
-        questions, 
+        prompts, 
         num_return_sequences=oversample, 
         temperature=temperature
     )
@@ -25,7 +27,7 @@ def generate_dataset(output_json: str, oversample: int = 10, temperature: float 
         for attempt in attempts:
             predicted_val = model.parse_answer(attempt)
             if is_answer_valid(predicted_val, correct_val):
-                # Save Question, Rounded Answer, and the Full Reasoning Path
+                # Save the Reasoning path (the full 'attempt' string)
                 rft_data.append([question, round(float(correct_val), 3), attempt])
                 break 
 
