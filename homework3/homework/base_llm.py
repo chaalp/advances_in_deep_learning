@@ -25,38 +25,38 @@ class BaseLLM:
         better if you provide a chat template. self.tokenizer.apply_chat_template can help here
         You don't need to change this function for now.
         """
-        #return question
+        return question
        
-        is_reasoning_model = getattr(self, "model_name", "") in ["rft"]
+        # is_reasoning_model = getattr(self, "model_name", "") in ["rft"]
 
-        if is_reasoning_model:
-            system_content = (
-                "You are a precise unit conversion assistant. "
-                "First, identify the conversion factor. Second, perform the calculation. "
-                "Finally, provide the numeric result inside <answer> tags. "
-                "Respond with reasoning then the answer."
-            )
-            assistant_shot = "1 kilometer is 1000 meters. So, 5.5 * 1000 = 5500. <answer>5500</answer>"
-        else:
-            system_content = (
-                "You are a unit converter. Provide the numeric result inside <answer> tags immediately. "
-                "Do not show reasoning."
-            )
-            assistant_shot = "<answer>6000</answer>"
+        # if is_reasoning_model:
+        #     system_content = (
+        #         "You are a precise unit conversion assistant. "
+        #         "First, identify the conversion factor. Second, perform the calculation. "
+        #         "Finally, provide the numeric result inside <answer> tags. "
+        #         "Respond with reasoning then the answer."
+        #     )
+        #     assistant_shot = "1 kilometer is 1000 meters. So, 5.5 * 1000 = 5500. <answer>5500</answer>"
+        # else:
+        #     system_content = (
+        #         "You are a unit converter. Provide the numeric result inside <answer> tags immediately. "
+        #         "Do not show reasoning."
+        #     )
+        #     assistant_shot = "<answer>6000</answer>"
 
-        messages = [
-            {"role": "system", "content": system_content},
-            {"role": "user", "content": "How many meters are in 6 km?" if not is_reasoning_model else "How many meters are in 5.5 km?"},
-            {"role": "assistant", "content": assistant_shot},
-            {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
-        ]
+        # messages = [
+        #     {"role": "system", "content": system_content},
+        #     {"role": "user", "content": "How many meters are in 6 km?" if not is_reasoning_model else "How many meters are in 5.5 km?"},
+        #     {"role": "assistant", "content": assistant_shot},
+        #     {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
+        # ]
     
-        # apply_chat_template adds the necessary special tokens for SmolLM2
-        return self.tokenizer.apply_chat_template(
-            messages, 
-            tokenize=False, 
-            add_generation_prompt=True
-        )
+        # # apply_chat_template adds the necessary special tokens for SmolLM2
+        # return self.tokenizer.apply_chat_template(
+        #     messages, 
+        #     tokenize=False, 
+        #     add_generation_prompt=True
+        # )
         
     def parse_answer(self, answer: str) -> float:
         """
