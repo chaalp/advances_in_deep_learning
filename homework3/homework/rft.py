@@ -25,10 +25,11 @@ def format_rft_example(question: str, correct_answer: float, reasoning_chain: st
     """
     In RFT, the 'answer' is the full reasoning path including the <answer> tags.
     """
-    return {
-        "question": question,
-        "answer": reasoning_chain
-    }
+    #return {
+    #    "question": question,
+    #    "answer": reasoning_chain
+    #}
+    return {"question": question + " Answer with <answer>...</answer>.", "answer": reasoning_chain}
 
 def train_model(
     output_dir: str,
