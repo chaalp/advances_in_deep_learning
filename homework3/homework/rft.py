@@ -54,8 +54,8 @@ def train_model(
 
     # LoRA Config - The README suggests a slightly larger adapter for RFT
     config = LoraConfig(
-        r=8,
-        lora_alpha=32, 
+        r=16,
+        lora_alpha=80, 
         target_modules="all-linear", 
         bias="none", 
         task_type="CAUSAL_LM"
