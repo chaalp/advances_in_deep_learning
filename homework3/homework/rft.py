@@ -71,7 +71,7 @@ def train_model(
         gradient_checkpointing=True,
         logging_dir=output_dir,
         save_strategy="epoch",
-        report_to="none"
+        report_to="tensorboard"
     )
 
     trainer = Trainer(
