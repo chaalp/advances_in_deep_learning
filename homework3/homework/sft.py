@@ -109,7 +109,7 @@ def train_model(
         num_train_epochs=5,
         gradient_checkpointing=True,
         logging_dir=output_dir,
-        report_to="none",
+        report_to="tensorboard",
         save_strategy="epoch"
     )
 

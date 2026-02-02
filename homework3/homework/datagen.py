@@ -14,7 +14,7 @@ def generate_dataset(output_json: str, oversample: int = 10, temperature: float 
     rft_data = []
 
     # Small micro-batch size to prevent OOM with the 1.7B model
-    micro_batch_size = 16 
+    micro_batch_size = 8 
 
     for i in range(0, len(dataset), micro_batch_size):
         batch = dataset.data[i : i + micro_batch_size]
