@@ -1,6 +1,8 @@
 from .base_llm import BaseLLM
 from .data import Dataset, benchmark
 
+from peft import LoraConfig, get_peft_model
+from transformers import TrainingArguments, Trainer
 
 def load() -> BaseLLM:
     from pathlib import Path
@@ -11,12 +13,11 @@ def load() -> BaseLLM:
     model_path = Path(__file__).parent / model_name
 
     llm = BaseLLM()
-    llm.model_name = "sft"
-    # Cast Path object to string
-    llm.model = PeftModel.from_pretrained(llm.model, str(model_path)).to(llm.device)
+    llm.model = PeftModel.from_pretrained(llm.model, model_path).to(llm.device)
     llm.model.eval()
 
     return llm
+
 
 def tokenize(tokenizer, question: str, answer: str):
     """
@@ -26,60 +27,37 @@ def tokenize(tokenizer, question: str, answer: str):
     `labels[i] == -100` for the question or masked out parts, since we only want to supervise
     the answer.
     """
-    # This MUST be an exact copy of the messages list in BaseLLM.format_prompt
-    messages = [
-        {
-            "role": "system", 
-            "content": "You are a unit converter. Provide the numeric result inside <answer> tags immediately. Do not show reasoning."
-        },
-        # Easy example: Powers of 10
-        {"role": "user", "content": "6 km to meters"},
-        {"role": "assistant", "content": "<answer>6000</answer>"},
-        
-        # Harder example: Multiplication that isn't just adding zeros
-        {"role": "user", "content": "How many seconds are in 2 hours?"},
-        {"role": "assistant", "content": "<answer>7200</answer>"},
+    full_text = f"{question} {answer}{tokenizer.eos_token}"
 
-        # The target question
-        {"role": "user", "content": f"{question} Answer with <answer>...</answer>."},
-        {"role": "assistant", "content": answer} 
-    ]
-    
-    # Apply template and tokenize
-    full_text = tokenizer.apply_chat_template(messages, tokenize=False)
-    full = tokenizer(full_text, padding="max_length", truncation=True, max_length=256) # Increased length
-    
-    # Calculate prompt length for masking
-    prompt_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
-    prompt_len = len(tokenizer.encode(prompt_text, add_special_tokens=False))
+    tokenizer.padding_side = "right"
+    tokenizer.pad_token = tokenizer.eos_token
+    full = tokenizer(full_text, padding="max_length", truncation=True, max_length=128)
 
-    labels = full["input_ids"].copy()
+    input_ids = full["input_ids"]
+    question_len = len(tokenizer(question)["input_ids"])
+
+    # Create labels: mask out the prompt part
+    labels = [-100] * question_len + input_ids[question_len:]
+
     for i in range(len(labels)):
-        # Mask everything up to the end of the prompt
-        if i < prompt_len:
+        if full["attention_mask"][i] == 0:
             labels[i] = -100
-        # Also mask the padding tokens
-        elif full["attention_mask"][i] == 0:
-            labels[i] = -100
-            
+
     full["labels"] = labels
     return full
 
+
 def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
-    Construct a question / answer pair. This version ensures high precision 
-    without scientific notation, stripping unnecessary trailing zeros.
+    Construct a question / answer pair. Consider rounding the answer to make it easier for the LLM.
     """
-    try:
-        # Clean numeric formatting
-        ans_str = f"{float(answer):.10f}".rstrip("0").rstrip(".")
-    except:
-        ans_str = str(answer)
-
+    #raise NotImplementedError()
+    # We round the answer to 3 decimals to make it consistent
     return {
         "question": prompt,
-        "answer": f"<answer>{ans_str}</answer>", # No reasoning text
+        "answer": f"<answer>{round(float(answer), 3)}</answer>"
     }
+
 
 class TokenizedDataset:
     def __init__(self, tokenizer, data: Dataset, format_fn):
@@ -108,119 +86,44 @@ def train_model(
     **kwargs,
 ):
     #raise NotImplementedError()
-    #test_model(output_dir)
-
-    """
-    Train a LoRA adapter for SmolLM2 on the unit-conversion dataset.
-
-    Expected usage (from repo root):
-        python -m homework.sft train --output_dir homework/sft_model
-    """
-    import torch
-
-    from transformers import Trainer, TrainingArguments, default_data_collator, BitsAndBytesConfig
-    from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-
-    # Hyperparams (overridable via **kwargs)
-    learning_rate = float(kwargs.get("learning_rate", 5e-5))
-    num_train_epochs = float(kwargs.get("num_train_epochs", 5))
-    per_device_train_batch_size = int(kwargs.get("per_device_train_batch_size", 32))
-    gradient_accumulation_steps = int(kwargs.get("gradient_accumulation_steps", 1))
-    warmup_ratio = float(kwargs.get("warmup_ratio", 0.03))
-    weight_decay = float(kwargs.get("weight_decay", 0.0))
-    logging_steps = int(kwargs.get("logging_steps", 25))
-    save_strategy = kwargs.get("save_strategy", "epoch")
-
-    # LoRA params
-    lora_r = int(kwargs.get("lora_r", 16))
-    lora_alpha = int(kwargs.get("lora_alpha", 16))
-    lora_dropout = float(kwargs.get("lora_dropout", 0.05))
-
-    trainset = Dataset("train")
-
-    # 1. Define the 4-bit configuration
-    bnb_config = BitsAndBytesConfig(
-        load_in_8bit=True,
-        llm_int8_threshold=6.0,  # Default threshold for outlier weights
-        llm_int8_has_fp16_weight=False,
+    llm = BaseLLM()
+    
+    # LoRA Configuration
+    config = LoraConfig(
+        r=16, 
+        lora_alpha=64, 
+        target_modules="all-linear", 
+        bias="none", 
+        task_type="CAUSAL_LM"
     )
-
-    # 2. Load the base model with the config
-    llm = BaseLLM(quantization_config=bnb_config)
-
-    # 3. Prepare the model for 8-bit training (MANDATORY for LoRA)
-    llm.model = prepare_model_for_kbit_training(llm.model)
-
-    train_dataset = TokenizedDataset(llm.tokenizer, trainset, format_example)
-
-    lora_cfg = LoraConfig(
-        r=lora_r,
-        lora_alpha=lora_alpha,
-        lora_dropout=lora_dropout,
-        target_modules="all-linear",
-        bias="none",
-        task_type="CAUSAL_LM",
-    )
-
-    # 1. Initialize LoRA
-    llm.model = get_peft_model(llm.model, lora_cfg)
-    llm.model.print_trainable_parameters()
-
-    # 2. Fix for gradient checkpointing + LoRA
-    #if llm.device == "cuda":
+    llm.model = get_peft_model(llm.model, config)
     llm.model.enable_input_require_grads()
 
-    # 3. Ensure the model is in training mode
-    llm.model.train()
-    
-    # 4. Explicitly ensure LoRA weights are trainable
-    for name, param in llm.model.named_parameters():
-        if "lora_" in name:
-            param.requires_grad = True
+    train_data = Dataset("train")
+    train_dataset = TokenizedDataset(llm.tokenizer, train_data, format_example)
 
-    # 5. Disable cache to save memory and avoid warnings during training
-    llm.model.config.use_cache = False
-
-    # Training args
-    args = TrainingArguments(
-        optim="adamw_bnb_8bit", 
+    training_args = TrainingArguments(
         output_dir=output_dir,
-        logging_dir=output_dir,
-        report_to="tensorboard",
-        learning_rate=learning_rate,              # Slightly higher for small model
-        num_train_epochs=num_train_epochs,        # 3-5 is usually sufficient
         per_device_train_batch_size=32,
-        gradient_accumulation_steps=1,
-        warmup_ratio=0.05,               # 5% warmup
-        weight_decay=0.01,               # Added for generalization
-        gradient_checkpointing=True,     # Disable if VRAM allows for speed
-        bf16=torch.cuda.is_bf16_supported(), # Auto-detect BF16
-        fp16=not torch.cuda.is_bf16_supported(), # Fallback to FP16
-        logging_steps=10,
-        save_strategy="epoch",
-        remove_unused_columns=False,     # Keep for custom dataset
-        label_names=["labels"],
-        max_grad_norm=1.0,
+        learning_rate=2e-4,
+        num_train_epochs=5,
+        gradient_checkpointing=True,
+        logging_dir=output_dir,
+        report_to="none", # Change to tensorboard if needed
+        save_strategy="epoch"
     )
 
     trainer = Trainer(
         model=llm.model,
-        args=args,
+        args=training_args,
         train_dataset=train_dataset,
-        data_collator=default_data_collator,
     )
 
     trainer.train()
-
-    # Save ONLY the adapter (PeftModel)
-    # This saves the model in a way that remains small on disk
-    trainer.model.save_pretrained(
-        output_dir, 
-        safe_serialization=True, 
-        variant="8bit"  # Flags the file to stay small on disk
-    )
+    llm.model.save_pretrained(output_dir)
 
     test_model(output_dir)
+
 
 def test_model(ckpt_path: str):
     testset = Dataset("valid")

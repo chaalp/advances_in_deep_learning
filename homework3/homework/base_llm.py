@@ -1,43 +1,17 @@
 from typing import overload
 
 import torch
-import re
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-#checkpoint = "HuggingFaceTB/SmolLM2-360M-Instruct"
-
-# Use a pre-quantized 4-bit version of SmolLM2
-checkpoint = "HuggingFaceTB/SmolLM2-1.7B"
+checkpoint = "HuggingFaceTB/SmolLM2-360M-Instruct"
 
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
 
 class BaseLLM:
-    def __init__(self, checkpoint=checkpoint, quantization_config=None):
+    def __init__(self, checkpoint=checkpoint):
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-
-        # Add a default ChatML template if one isn't set
-        if self.tokenizer.chat_template is None:
-            self.tokenizer.chat_template = (
-                "{% for message in messages %}"
-                "{{ '<|im_start|>' + message['role'] + '\\n' + message['content'] + '<|im_end|>\\n' }}"
-                "{% endfor %}"
-                "{% if add_generation_prompt %}"
-                "{{ '<|im_start|>assistant\\n' }}"
-                "{% endif %}"
-            )
-
-        # Pass the quantization_config and use device_map="auto" for 8-bit
-        self.model = AutoModelForCausalLM.from_pretrained(
-            checkpoint,
-            quantization_config=quantization_config,
-            device_map="auto" if quantization_config else None
-        )
-        
-        # If not quantizing, manually move to device as before
-        if not quantization_config:
-            self.model = self.model.to(device)
-            
+        self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)
         self.device = device
 
     def format_prompt(self, question: str) -> str:
@@ -46,86 +20,18 @@ class BaseLLM:
         better if you provide a chat template. self.tokenizer.apply_chat_template can help here
         You don't need to change this function for now.
         """
-        # Define the instruction as a system message to guide the model's behavior
-        # Determine if we should use Chain of Thought based on the class attribute
-        is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
-
-        if is_reasoning_model:
-            system_content = (
-                "You are a precise unit conversion assistant. "
-                "First, identify the conversion factor. Second, perform the calculation. "
-                "Finally, provide the numeric result inside <answer> tags. "
-                "Respond with reasoning then the answer."
-            )
-            assistant_shot = "1 kilometer is 1000 meters. So, 5.5 * 1000 = 5500. <answer>5500</answer>"
-        else:
-            system_content = (
-                "You are a unit converter. Provide the numeric result inside <answer> tags immediately. "
-                "Do not show reasoning."
-            )
-            assistant_shot = "<answer>6000</answer>"
-
-        messages = [
-            {"role": "system", "content": system_content},
-            {"role": "user", "content": "How many meters are in 6 km?" if not is_reasoning_model else "How many meters are in 5.5 km?"},
-            {"role": "assistant", "content": assistant_shot},
-            {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
-        ]
-    
-        # apply_chat_template adds the necessary special tokens for SmolLM2
-        return self.tokenizer.apply_chat_template(
-            messages, 
-            tokenize=False, 
-            add_generation_prompt=True
-        )
-
-    '''
-    def parse_answer(self, answer: str) -> float:
-        # 1. Try to extract from the <answer> tag first
-        # 2. Fallback to the last numerical value in the string
-        tag_match = re.search(r"<answer>\s*([-+]?[\d,]*\.?\d+)", answer)
-    
-        # If no tag, find all numbers and pick the last one
-        if tag_match:
-            raw_val = tag_match.group(1)
-        else:
-            numbers = re.findall(r"[-+]?[\d,]*\.?\d+", answer)
-            if not numbers:
-                return float("nan")
-            raw_val = numbers[-1]
-
-        try:
-            val = float(raw_val.replace(",", ""))
-            # Return as int if it's a whole number, else float
-            return int(val) if val.is_integer() else val
-        except ValueError:
-            return float("nan")
-    '''
+        return question
 
     def parse_answer(self, answer: str) -> float:
-        import re
-        # 1. Use raw strings (r"") and the 'DOTALL' flag to search across multiple lines
-        # This specifically targets the <answer> tag while ignoring whitespace \s
-        tag_match = re.search(r"<answer>\s*(.*?)\s*</answer>", answer, re.IGNORECASE | re.DOTALL)
-    
-        if tag_match:
-            raw_val = tag_match.group(1)
-        else:
-            # 2. Fallback: find all numbers including decimals and signs
-            numbers = re.findall(r"[-+]?\d*\.?\d+", answer)
-            if not numbers:
-                return float("nan")
-            raw_val = numbers[-1]
-
-        # 3. Strip everything except numbers, decimal points, and minus signs
-        clean_val = re.sub(r"[^\d.-]", "", raw_val)
-
+        """
+        Parse the <answer></answer> tag and return a float.
+        This function is somewhat robust to output errors (e.g. missing </answer> tags).
+        """
         try:
-            val = float(clean_val)
-            return int(val) if val.is_integer() else val
-        except ValueError:
+            return float(answer.split("<answer>")[1].split("</answer>")[0])
+        except (IndexError, ValueError):
             return float("nan")
-        
+
     def generate(self, prompt: str) -> str:
         """
         (Optional) Implement this method first and then implement batched_generate below.
@@ -137,10 +43,7 @@ class BaseLLM:
         - decode the outputs with self.tokenizer.decode
 
         """
-        #return self.batched_generate([prompt])[0]
-        # 'prompt' here is actually the raw question from the benchmark
-        formatted_prompt = self.format_prompt(prompt) 
-        return self.batched_generate([formatted_prompt])[0]
+        return self.batched_generate([prompt])[0]
 
     @overload
     def batched_generate(
@@ -162,7 +65,7 @@ class BaseLLM:
 
     def batched_generate(
         self, prompts: list[str], num_return_sequences: int | None = None, temperature: float = 0
-    ):
+    ) -> list[str] | list[list[str]]:
         """
         Batched version of `generate` method.
 
@@ -187,88 +90,57 @@ class BaseLLM:
         Pro Tip: Only batch_decode generated tokens by masking out the inputs with
                  outputs[:, len(inputs["input_ids"][0]) :]
         """
+        from tqdm import tqdm  # Importing tqdm for progress bar
+
         # Preventing OOM
         # Depending on your GPU batched generation will use a lot of memory.
         # If you run out of memory, try to reduce the micro_batch_size.
-
-        micro_batch_size = 16
+        micro_batch_size = 32
         if len(prompts) > micro_batch_size:
-            out = []
-            for i in range(0, len(prompts), micro_batch_size):
-                out.extend(self.batched_generate(prompts[i:i+micro_batch_size], num_return_sequences, temperature))
-            return out
-        
-        #raise NotImplementedError()
-
-        # Before the core generation, clear fragmentation
-        torch.cuda.empty_cache()
+            return [
+                r
+                for idx in tqdm(
+                    range(0, len(prompts), micro_batch_size), desc=f"LLM Running on Micro Batches {micro_batch_size}"
+                )
+                for r in self.batched_generate(prompts[idx : idx + micro_batch_size], num_return_sequences, temperature)
+            ]
 
         self.tokenizer.padding_side = "left"
         self.tokenizer.pad_token = self.tokenizer.eos_token
+        
+        inputs = self.tokenizer(prompts, padding=True, return_tensors="pt").to(self.device)
+        input_length = inputs["input_ids"].shape[1]
 
-         # Tokenize
-        inputs = self.tokenizer(
-            prompts,
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-        )
-        #inputs = {k: v.to(self.device) for k, v in inputs.items()}
-
-        # To this (more robust for auto device maps):
-        inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
-
-        # Detect which model variant is running
-        is_cot_or_rft = getattr(self, "model_name", "") in ["cot", "rft"]
-    
-        # CoT needs more tokens for reasoning (128)
-        # SFT needs fewer tokens (48) to pass the 40s timeout in non-batch mode
-        max_tokens = 256 if is_cot_or_rft else 48
-
-        # Generation params
-        gen_kwargs = dict(
-            max_new_tokens=max_tokens,     # Reduced for speed/timeout safety
-            min_new_tokens=1,      # Forces the model to generate a response
+        # Call model.generate
+        output_ids = self.model.generate(
+            **inputs,
+            max_new_tokens=128,
+            do_sample=temperature > 0,
+            temperature=temperature if temperature > 0 else 1.0,
+            num_return_sequences=num_return_sequences or 1,
             eos_token_id=self.tokenizer.eos_token_id,
-            pad_token_id=self.tokenizer.eos_token_id,
-            do_sample=True if temperature > 0 else False,
-            temperature=temperature if temperature > 0 else None,
-            use_cache=True,
+            pad_token_id=self.tokenizer.eos_token_id
         )
 
+        # Slice to get only new tokens
+        generated_ids = output_ids[:, input_length:]
+        decoded = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+
         if num_return_sequences is not None:
-            gen_kwargs["num_return_sequences"] = int(num_return_sequences)
-
-        # Generate
-        with torch.inference_mode():
-            outputs = self.model.generate(
-                input_ids=inputs["input_ids"],
-                attention_mask=inputs["attention_mask"],
-                **gen_kwargs,
-            )
-
-        # Decode ONLY the newly generated tokens (mask out prompt)
-        prompt_len = inputs["input_ids"].shape[1]
-        gen_tokens = outputs[:, prompt_len:]
-
-        decoded = self.tokenizer.batch_decode(gen_tokens, skip_special_tokens=True)
-
-        # If we generated multiple sequences per prompt, reshape to list[list[str]]
-        if num_return_sequences is not None:
-            n, k = len(prompts), num_return_sequences
-            return [decoded[i*k:(i+1)*k] for i in range(n)]
-
+            # Reshape into list of lists: [len(prompts), num_return_sequences]
+            return [decoded[i : i + num_return_sequences] for i in range(0, len(decoded), num_return_sequences)]
+        
         return decoded
     
+        #raise NotImplementedError()
+
     def answer(self, *questions) -> list[float]:
         """
         Answer questions given as individual string arguments.
         """
         # Convert each question
         prompts = [self.format_prompt(q) for q in questions]
-        
-        # FORCE temperature 0 and ensure no sampling
-        generations = self.batched_generate(prompts, temperature=0) 
+        generations = self.batched_generate(prompts)
         return [self.parse_answer(g) for g in generations]
 
 

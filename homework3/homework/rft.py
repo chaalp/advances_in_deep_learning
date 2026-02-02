@@ -11,10 +11,7 @@ def load() -> BaseLLM:
     model_path = Path(__file__).parent / model_name
 
     llm = BaseLLM()
-    llm.model_name = "rft"
-
-    # Cast Path object to string
-    llm.model = PeftModel.from_pretrained(llm.model, str(model_path)).to(llm.device)
+    llm.model = PeftModel.from_pretrained(llm.model, model_path).to(llm.device)
     llm.model.eval()
 
     return llm
@@ -25,146 +22,8 @@ def train_model(
     **kwargs,
 ):
     # Reuse much of the SFT code here
-    #raise NotImplementedError()
+    raise NotImplementedError()
 
-    import json
-    from pathlib import Path
-
-    import torch
-    from transformers import Trainer, TrainingArguments, default_data_collator, BitsAndBytesConfig
-    from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training # Added import
-
-    from .data import DATA_DIR
-    from .sft import TokenizedDataset, tokenize
-
-    # Load RFT dataset
-    rft_path = Path(kwargs.get("rft_path", DATA_DIR / "rft.json"))
-    with rft_path.open() as f:
-        rft_data = json.load(f)
-
-    class RFTDataset:
-        def __init__(self, data):
-            self.data = data
-
-        def __len__(self):
-            return len(self.data)
-
-        def __getitem__(self, idx):
-            # [question, correct_float, reasoning_with_<answer>]
-            q, _, reasoning = self.data[idx]
-            return (q, reasoning)
-
-    def format_rft_example(prompt: str, reasoning: str) -> dict[str, str]:
-        # Here "answer" field is actually reasoning+answer text, supervised fully after the question
-        return {"question": prompt + " Answer with <answer>...</answer>.", "answer": reasoning}
-
-        # Let BaseLLM.format_prompt handle the formatting consistency.
-        #return {
-        #    "question": prompt, 
-        #    "answer": reasoning
-        #}
-
-
-    trainset = RFTDataset(rft_data)
-
-    # 1. Define 8-bit Config
-    bnb_config = BitsAndBytesConfig(
-        load_in_8bit=True,
-        llm_int8_threshold=6.0,  # Default threshold for outlier weights
-        llm_int8_has_fp16_weight=False,
-    )
-
-    # 2. Load model with config
-    llm = BaseLLM(quantization_config=bnb_config)
-
-    # 3. Prepare model for k-bit training
-    # This casts necessary layers to float32 for stability
-    llm.model = prepare_model_for_kbit_training(llm.model)
-
-    train_dataset = TokenizedDataset(llm.tokenizer, trainset, format_rft_example)
-
-    # LoRA params
-    lora_r = int(kwargs.get("lora_r", 16))
-    lora_alpha = int(kwargs.get("lora_alpha", 16))
-    lora_dropout = float(kwargs.get("lora_dropout", 0.05))
-
-    lora_cfg = LoraConfig(
-        r=lora_r,
-        lora_alpha=lora_alpha,
-        lora_dropout=lora_dropout,
-        target_modules="all-linear",
-        bias="none",
-        task_type="CAUSAL_LM",
-    )
-
-    # 1. Initialize LoRA
-    llm.model = get_peft_model(llm.model, lora_cfg)
-    llm.model.print_trainable_parameters()
-
-    # 2. Fix for gradient checkpointing + LoRA
-    #if llm.device == "cuda":
-    llm.model.enable_input_require_grads()
-
-    # 3. Ensure the model is in training mode
-    llm.model.train()    
-
-    # 4. Explicitly ensure LoRA weights are trainable
-    for name, param in llm.model.named_parameters():
-        if "lora_" in name:
-            param.requires_grad = True    
-
-    # 5. Disable cache to save memory and avoid warnings during training
-    llm.model.config.use_cache = False
-
-    # Training hyperparams
-    learning_rate = float(kwargs.get("learning_rate", 5e-5))
-    num_train_epochs = float(kwargs.get("num_train_epochs", 5))
-    per_device_train_batch_size = int(kwargs.get("per_device_train_batch_size", 32))
-    gradient_accumulation_steps = int(kwargs.get("gradient_accumulation_steps", 1))
-    warmup_ratio = float(kwargs.get("warmup_ratio", 0.03))
-    logging_steps = int(kwargs.get("logging_steps", 25))
-    save_strategy = kwargs.get("save_strategy", "epoch")
-
-    # Training args
-    args = TrainingArguments(
-        optim="adamw_bnb_8bit", #Use optim="adamw_bnb_8bit" to save even more VRAM
-        output_dir=output_dir,
-        logging_dir=output_dir,
-        report_to="tensorboard",
-        learning_rate=learning_rate,              # Slightly higher for small model
-        num_train_epochs=num_train_epochs,        # 3-5 is usually sufficient
-        per_device_train_batch_size=32,
-        gradient_accumulation_steps=1,
-        warmup_ratio=0.05,               # 5% warmup
-        weight_decay=0.01,               # Added for generalization
-        gradient_checkpointing=True,     # Disable if VRAM allows for speed
-        bf16=torch.cuda.is_bf16_supported(), # Auto-detect BF16
-        fp16=not torch.cuda.is_bf16_supported(), # Fallback to FP16
-        logging_steps=10,
-        save_strategy="epoch",
-        remove_unused_columns=False,     # Keep for custom dataset
-        label_names=["labels"],
-        max_grad_norm=1.0,
-    )
-
-    trainer = Trainer(
-        model=llm.model,
-        args=args,
-        train_dataset=train_dataset,
-        data_collator=default_data_collator,
-    )
-
-    trainer.train()
-
-    # This saves the model in a way that remains small on disk
-    trainer.model.save_pretrained(
-        output_dir, 
-        safe_serialization=True, 
-        variant="8bit"  # Flags the file to stay small on disk
-    )
-
-    # Reuse the same evaluator from SFT
-    test_model(output_dir)
 
 if __name__ == "__main__":
     from fire import Fire
