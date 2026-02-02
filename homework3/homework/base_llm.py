@@ -11,7 +11,10 @@ device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is
 class BaseLLM:
     def __init__(self, checkpoint=checkpoint):
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-        self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            checkpoint, 
+            torch_dtype=torch.bfloat16 # or torch.float16
+        ).to(device)
         self.device = device
 
     def format_prompt(self, question: str) -> str:
@@ -116,7 +119,8 @@ class BaseLLM:
         # Call model.generate
         output_ids = self.model.generate(
             **inputs,
-            max_new_tokens=128,
+            max_new_tokens=64,  # Reduced from 128
+            use_cache=True,      # Explicitly enable caching
             do_sample=temperature > 0,
             temperature=temperature if temperature > 0 else 1.0,
             num_return_sequences=num_return_sequences or 1,
