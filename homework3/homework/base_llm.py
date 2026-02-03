@@ -25,9 +25,7 @@ class BaseLLM:
         better if you provide a chat template. self.tokenizer.apply_chat_template can help here
         You don't need to change this function for now.
         """
-        #return question
-
-        return f"{question} "
+        return question
        
         # is_reasoning_model = getattr(self, "model_name", "") in ["rft"]
 
