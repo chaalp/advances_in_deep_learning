@@ -92,7 +92,7 @@ def train_model(
     
     # LoRA Configuration
     config = LoraConfig(
-        r=8, 
+        r=16, 
         lora_alpha=32, 
         target_modules="all-linear", 
         bias="none", 
