@@ -29,46 +29,72 @@ def tokenize(tokenizer, question: str, answer: str):
     `labels[i] == -100` for the question or masked out parts, since we only want to supervise
     the answer.
     """
-    full_text = f"{question} {answer}{tokenizer.eos_token}"
+    # full_text = f"{question} {answer}{tokenizer.eos_token}"
 
-    tokenizer.padding_side = "right"
-    tokenizer.pad_token = tokenizer.eos_token
-    full = tokenizer(full_text, padding="max_length", truncation=True, max_length=128)
+    # tokenizer.padding_side = "right"
+    # tokenizer.pad_token = tokenizer.eos_token
+    # full = tokenizer(full_text, padding="max_length", truncation=True, max_length=128)
 
-    input_ids = full["input_ids"]
-    question_len = len(tokenizer(question)["input_ids"])
+    # input_ids = full["input_ids"]
+    # question_len = len(tokenizer(question)["input_ids"])
 
-    # Create labels: mask out the prompt part
-    labels = [-100] * question_len + input_ids[question_len:]
+    # # Create labels: mask out the prompt part
+    # labels = [-100] * question_len + input_ids[question_len:]
 
+    # for i in range(len(labels)):
+    #     if full["attention_mask"][i] == 0:
+    #         labels[i] = -100
+
+    # full["labels"] = labels
+    # return full
+
+    messages = [
+        {
+            "role": "system", 
+            "content": "You are a unit converter. Provide the numeric result inside <answer> tags immediately. Do not show reasoning."
+        },
+        # Easy example: Powers of 10
+        {"role": "user", "content": "6 km to meters"},
+        {"role": "assistant", "content": "<answer>6000</answer>"},
+        
+        # Harder example: Multiplication that isn't just adding zeros
+        {"role": "user", "content": "How many seconds are in 2 hours?"},
+        {"role": "assistant", "content": "<answer>7200</answer>"},
+
+        # The target question
+        {"role": "user", "content": f"{question} Answer with <answer>...</answer>."},
+        {"role": "assistant", "content": answer} 
+    ]
+    
+    # Apply template and tokenize
+    full_text = tokenizer.apply_chat_template(messages, tokenize=False)
+    full = tokenizer(full_text, padding="max_length", truncation=True, max_length=256) # Increased length
+    
+    # Calculate prompt length for masking
+    prompt_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
+    prompt_len = len(tokenizer.encode(prompt_text, add_special_tokens=False))
+
+    labels = full["input_ids"].copy()
     for i in range(len(labels)):
-        if full["attention_mask"][i] == 0:
+        # Mask everything up to the end of the prompt
+        if i < prompt_len:
             labels[i] = -100
-
+        # Also mask the padding tokens
+        elif full["attention_mask"][i] == 0:
+            labels[i] = -100
+            
     full["labels"] = labels
     return full
-
 
 def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
     Construct a question / answer pair. Consider rounding the answer to make it easier for the LLM.
     """
     #raise NotImplementedError()
-    # We round the answer to 3 decimals to make it consistent
-    # return {
-    #     "question": prompt,
-    #     "answer": f"<answer>{round(float(answer), 3)}</answer>"
-    # }
-
-    try:
-        # Clean numeric formatting
-        ans_str = f"{float(answer):.10f}".rstrip("0").rstrip(".")
-    except:
-        ans_str = str(answer)
-
+    #We round the answer to 3 decimals to make it consistent
     return {
         "question": prompt,
-        "answer": f"<answer>{round(float(ans_str), 3)}</answer>", # No reasoning text
+        "answer": f"<answer>{round(float(answer), 3)}</answer>"
     }
 
 
@@ -103,8 +129,8 @@ def train_model(
     
     # LoRA Configuration
     config = LoraConfig(
-        r=12, 
-        lora_alpha=72, 
+        r=8, 
+        lora_alpha=64, 
         target_modules="all-linear", 
         bias="none", 
         task_type="CAUSAL_LM"
