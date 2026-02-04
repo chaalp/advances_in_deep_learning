@@ -91,7 +91,7 @@ def train_model(
 
     # Hyperparams (overridable via **kwargs)
     learning_rate = float(kwargs.get("learning_rate", 2e-4))
-    num_train_epochs = float(kwargs.get("num_train_epochs", 10))
+    num_train_epochs = float(kwargs.get("num_train_epochs", 5))
 
     llm = BaseLLM()
     

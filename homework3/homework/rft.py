@@ -73,7 +73,7 @@ def train_model(
 
     training_args = TrainingArguments(
         output_dir=output_dir,
-        per_device_train_batch_size=16,
+        per_device_train_batch_size=32,
         learning_rate=learning_rate,
         num_train_epochs=num_train_epochs,
         gradient_checkpointing=True,
