@@ -38,6 +38,10 @@ def train_model(
 ):
     # Reuse much of the SFT code here
     #raise NotImplementedError()
+
+    # Hyperparams (overridable via **kwargs)
+    learning_rate = float(kwargs.get("learning_rate", 2e-4))
+    num_train_epochs = float(kwargs.get("num_train_epochs", 10))
     
     llm = BaseLLM()
     
@@ -70,8 +74,8 @@ def train_model(
     training_args = TrainingArguments(
         output_dir=output_dir,
         per_device_train_batch_size=16,
-        learning_rate=1e-4,
-        num_train_epochs=5,
+        learning_rate=learning_rate,
+        num_train_epochs=num_train_epochs,
         gradient_checkpointing=True,
         logging_dir=output_dir,
         save_strategy="epoch",
