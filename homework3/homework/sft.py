@@ -93,7 +93,7 @@ def train_model(
     # LoRA Configuration
     config = LoraConfig(
         r=8, 
-        lora_alpha=40, 
+        lora_alpha=72, 
         target_modules="all-linear", 
         bias="none", 
         task_type="CAUSAL_LM"
