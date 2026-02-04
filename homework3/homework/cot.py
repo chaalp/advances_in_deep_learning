@@ -25,7 +25,7 @@ class CoTModel(BaseLLM):
             
             # Few-Shot Example 2: Precision/Decimal handling
             {"role": "user", "content": "Convert 12 inches to centimeters."},
-            {"role": "assistant", "content": "1 inch is 2.54 cm. 12 * 2.54 = 30.48. <answer>30.48</answer>"},
+            {"role": "assistant", "content": "1 inch is 2.54 cm. Calculation: 12 * 2.54 = 30.480. <answer>30.480</answer>"},
             
             # The actual question
             {"role": "user", "content": question},
