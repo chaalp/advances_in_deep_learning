@@ -26,7 +26,7 @@ def generate_dataset(output_json: str, oversample: int = 10, temperature: float 
         question, correct_val = dataset[i]
         for attempt in attempts:
             predicted_val = model.parse_answer(attempt)
-            if is_answer_valid(predicted_val, correct_val):
+            if is_answer_valid(predicted_val, correct_val) and "</answer>" in attempt:
                 # Save the Reasoning path (the full 'attempt' string)
                 rft_data.append([question, round(float(correct_val), 3), attempt])
                 break 
