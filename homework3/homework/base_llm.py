@@ -129,7 +129,7 @@ class BaseLLM:
         input_length = inputs["input_ids"].shape[1]
 
         is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
-        max_tokens = 96 if is_reasoning_model else 48
+        max_tokens = 104 if is_reasoning_model else 48
 
         # Call model.generate
         output_ids = self.model.generate(
