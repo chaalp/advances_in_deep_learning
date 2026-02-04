@@ -92,9 +92,20 @@ def format_example(prompt: str, answer: str) -> dict[str, str]:
     """
     #raise NotImplementedError()
     #We round the answer to 3 decimals to make it consistent
+    # return {
+    #     "question": prompt,
+    #     "answer": f"<answer>{round(float(answer), 3)}</answer>"
+    # }
+
+    try:
+        # Clean numeric formatting
+        ans_str = f"{float(answer):.10f}".rstrip("0").rstrip(".")
+    except:
+        ans_str = str(answer)
+
     return {
         "question": prompt,
-        "answer": f"<answer>{round(float(answer), 3)}</answer>"
+        "answer": f"<answer>{ans_str}</answer>", # No reasoning text
     }
 
 
@@ -129,8 +140,8 @@ def train_model(
     
     # LoRA Configuration
     config = LoraConfig(
-        r=8, 
-        lora_alpha=64, 
+        r=16, 
+        lora_alpha=16, 
         target_modules="all-linear", 
         bias="none", 
         task_type="CAUSAL_LM"
