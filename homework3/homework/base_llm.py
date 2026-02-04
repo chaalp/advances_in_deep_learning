@@ -29,7 +29,7 @@ class BaseLLM:
         """
         return question
        
-        # is_reasoning_model = getattr(self, "model_name", "") in ["rft"]
+        # is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
 
         # if is_reasoning_model:
         #     system_content = (
