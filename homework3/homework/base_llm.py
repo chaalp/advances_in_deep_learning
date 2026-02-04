@@ -1,14 +1,12 @@
 from typing import overload
 
 import torch
-import re
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 checkpoint = "HuggingFaceTB/SmolLM2-360M-Instruct"
 
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-
 
 class BaseLLM:
     def __init__(self, checkpoint=checkpoint):
@@ -28,68 +26,15 @@ class BaseLLM:
         You don't need to change this function for now.
         """
         return question
-       
-        # is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
-
-        # if is_reasoning_model:
-        #     system_content = (
-        #         "You are a precise unit conversion assistant. "
-        #         "First, identify the conversion factor. Second, perform the calculation. "
-        #         "Finally, provide the numeric result inside <answer> tags. "
-        #         "Respond with reasoning then the answer."
-        #     )
-        #     assistant_shot = "1 kilometer is 1000 meters. So, 5.5 * 1000 = 5500. <answer>5500</answer>"
-        # else:
-        #     system_content = (
-        #         "You are a unit converter. Provide the numeric result inside <answer> tags immediately. "
-        #         "Do not show reasoning."
-        #     )
-        #     assistant_shot = "<answer>6000</answer>"
-
-        # messages = [
-        #     {"role": "system", "content": system_content},
-        #     {"role": "user", "content": "How many meters are in 6 km?" if not is_reasoning_model else "How many meters are in 5.5 km?"},
-        #     {"role": "assistant", "content": assistant_shot},
-        #     {"role": "user", "content": f"{question} Answer with <answer>...</answer>."}
-        # ]
-    
-        # # apply_chat_template adds the necessary special tokens for SmolLM2
-        # return self.tokenizer.apply_chat_template(
-        #     messages, 
-        #     tokenize=False, 
-        #     add_generation_prompt=True
-        # )
         
     def parse_answer(self, answer: str) -> float:
         """
         Parse the <answer></answer> tag and return a float.
         This function is somewhat robust to output errors (e.g. missing </answer> tags).
         """
-        # try:
-        #     return float(answer.split("<answer>")[1].split("</answer>")[0])
-        # except (IndexError, ValueError):
-        #     return float("nan")
-        
-        # 1. Use raw strings (r"") and the 'DOTALL' flag to search across multiple lines
-        # This specifically targets the <answer> tag while ignoring whitespace \s
-        tag_match = re.search(r"<answer>\s*(.*?)\s*</answer>", answer, re.IGNORECASE | re.DOTALL)
-    
-        if tag_match:
-            raw_val = tag_match.group(1)
-        else:
-            # 2. Fallback: find all numbers including decimals and signs
-            numbers = re.findall(r"[-+]?\d*\.?\d+", answer)
-            if not numbers:
-                return float("nan")
-            raw_val = numbers[-1]
-
-        # 3. Strip everything except numbers, decimal points, and minus signs
-        clean_val = re.sub(r"[^\d.-]", "", raw_val)
-
         try:
-            val = float(clean_val)
-            return int(val) if val.is_integer() else val
-        except ValueError:
+            return float(answer.split("<answer>")[1].split("</answer>")[0])
+        except (IndexError, ValueError):
             return float("nan")
 
     def generate(self, prompt: str) -> str:
