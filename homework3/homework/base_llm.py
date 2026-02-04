@@ -1,6 +1,8 @@
 from typing import overload
 
 import torch
+import re
+
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 checkpoint = "HuggingFaceTB/SmolLM2-360M-Instruct"
@@ -63,9 +65,31 @@ class BaseLLM:
         Parse the <answer></answer> tag and return a float.
         This function is somewhat robust to output errors (e.g. missing </answer> tags).
         """
+        # try:
+        #     return float(answer.split("<answer>")[1].split("</answer>")[0])
+        # except (IndexError, ValueError):
+        #     return float("nan")
+        
+        # 1. Use raw strings (r"") and the 'DOTALL' flag to search across multiple lines
+        # This specifically targets the <answer> tag while ignoring whitespace \s
+        tag_match = re.search(r"<answer>\s*(.*?)\s*</answer>", answer, re.IGNORECASE | re.DOTALL)
+    
+        if tag_match:
+            raw_val = tag_match.group(1)
+        else:
+            # 2. Fallback: find all numbers including decimals and signs
+            numbers = re.findall(r"[-+]?\d*\.?\d+", answer)
+            if not numbers:
+                return float("nan")
+            raw_val = numbers[-1]
+
+        # 3. Strip everything except numbers, decimal points, and minus signs
+        clean_val = re.sub(r"[^\d.-]", "", raw_val)
+
         try:
-            return float(answer.split("<answer>")[1].split("</answer>")[0])
-        except (IndexError, ValueError):
+            val = float(clean_val)
+            return int(val) if val.is_integer() else val
+        except ValueError:
             return float("nan")
 
     def generate(self, prompt: str) -> str:
@@ -159,7 +183,7 @@ class BaseLLM:
         inputs = self.tokenizer(prompts, padding=True, return_tensors="pt").to(self.device)
         input_length = inputs["input_ids"].shape[1]
 
-        is_reasoning_model = getattr(self, "model_name", "") in ["rft"]
+        is_reasoning_model = getattr(self, "model_name", "") in ["cot", "rft"]
         max_tokens = 128 if is_reasoning_model else 48
 
         # Call model.generate
