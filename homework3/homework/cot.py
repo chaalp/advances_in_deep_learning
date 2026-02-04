@@ -15,7 +15,7 @@ class CoTModel(BaseLLM):
                 "content": (
                     "You are a precise unit conversion assistant. "
                     "First, identify the conversion factor. Second, perform the calculation. "
-                    "Finally, provide the numeric result inside <answer> tags. "
+                    "Finally, provide the numeric result inside <answer></answer> tags. "
                     "Respond with concise reasoning then the answer."
                 ),
             },
