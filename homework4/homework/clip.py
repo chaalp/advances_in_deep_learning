@@ -102,7 +102,44 @@ class CLIP(nn.Module):
         self.vision_encoder = vision_encoder
         self.text_encoder = text_encoder
         # TODO: implement the rest components
-        raise NotImplementedError("Not implemented")
+        #raise NotImplementedError("Not implemented")
+
+        super().__init__()
+        self.vision_encoder = vision_encoder
+        self.text_encoder = text_encoder
+
+        # Robustly infer hidden sizes
+        def _get_hidden_size(enc: nn.Module) -> int:
+            cfg = getattr(enc, "config", None)
+            if cfg is None:
+                # last resort: common attr names
+                for name in ["hidden_size", "d_model", "dim"]:
+                    if hasattr(enc, name):
+                        return int(getattr(enc, name))
+                raise ValueError("Cannot infer hidden size for encoder (no config.hidden_size-like field).")
+
+            # common cases
+            for attr in ["hidden_size", "d_model", "dim"]:
+                if hasattr(cfg, attr):
+                    return int(getattr(cfg, attr))
+
+            # some vision configs nest vision_config
+            vc = getattr(cfg, "vision_config", None)
+            if vc is not None:
+                for attr in ["hidden_size", "d_model", "dim"]:
+                    if hasattr(vc, attr):
+                        return int(getattr(vc, attr))
+
+            raise ValueError("Cannot infer hidden size for encoder config.")
+
+        vision_h = _get_hidden_size(vision_encoder)
+        text_h = _get_hidden_size(text_encoder)
+
+        self.vision_projection = nn.Linear(vision_h, proj_dim, bias=False)
+        self.text_projection = nn.Linear(text_h, proj_dim, bias=False)
+
+        # keep as float; simplest and stable
+        self.temperature = float(temperature)
 
     def encode_image(self, image: torch.Tensor) -> torch.Tensor:
         return self.vision_encoder(image)
@@ -160,6 +197,28 @@ class CLIP(nn.Module):
         self.vision_encoder.embeddings.register_forward_hook(make_inputs_require_grads)
         self.text_encoder.get_input_embeddings().register_forward_hook(make_inputs_require_grads)
 
+    def _pool(self, outputs: Any) -> torch.Tensor:
+        """
+        Return a [B, H] pooled feature from various HF output types.
+        """
+        if outputs is None:
+            raise ValueError("Encoder returned None")
+
+        # HF outputs often have pooler_output or last_hidden_state
+        if hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:
+            return outputs.pooler_output
+        if hasattr(outputs, "last_hidden_state") and outputs.last_hidden_state is not None:
+            return outputs.last_hidden_state[:, 0]  # CLS token
+
+        # sometimes encoder returns tuple
+        if isinstance(outputs, (tuple, list)) and len(outputs) > 0:
+            x = outputs[0]
+            if x.dim() == 3:
+                return x[:, 0]
+            if x.dim() == 2:
+                return x
+        raise ValueError("Unable to pool encoder outputs into [B, H].")        
+
     def forward(
         self,
         pixel_values: torch.Tensor,
@@ -180,9 +239,37 @@ class CLIP(nn.Module):
         Returns:
             TODO: think about the what values should be returned
         """
-        raise NotImplementedError("Not implemented")
+        #raise NotImplementedError("Not implemented")
 
+        """
+        Returns:
+        vision_features: [B, D]
+        text_features:   [B, D]
+        logits:          [B, B]  (image->text similarity)
+        """
+        # Vision forward: try keyword first (HF style), fall back to positional
+        try:
+            v_out = self.vision_encoder(pixel_values=pixel_values)
+        except TypeError:
+            v_out = self.vision_encoder(pixel_values)
 
+        v = self._pool(v_out)
+        v = self.vision_projection(v)
+        v = torch.nn.functional.normalize(v, dim=-1)
+
+        # Text forward
+        try:
+            t_out = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask)
+        except TypeError:
+            t_out = self.text_encoder(input_ids, attention_mask)
+
+        t = self._pool(t_out)
+        t = self.text_projection(t)
+        t = torch.nn.functional.normalize(t, dim=-1)
+
+        logits = torch.matmul(v, t.T) / self.temperature
+        return v, t, logits
+    
 def compute_clip_loss(
     outputs: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
     labels: torch.Tensor,
@@ -199,7 +286,16 @@ def compute_clip_loss(
     Returns:
         The loss for the CLIP model.
     """
-    raise NotImplementedError("Not implemented")
+    #raise NotImplementedError("Not implemented")
+
+    _, _, logits = outputs
+    device = logits.device
+    bsz = logits.shape[0]
+    target = torch.arange(bsz, device=device)
+
+    loss_i2t = torch.nn.functional.cross_entropy(logits, target)
+    loss_t2i = torch.nn.functional.cross_entropy(logits.T, target)
+    return 0.5 * (loss_i2t + loss_t2i)
 
 
 def get_target_modules_for_lora(model: nn.Module) -> list[str]:
