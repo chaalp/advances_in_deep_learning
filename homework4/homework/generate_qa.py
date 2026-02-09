@@ -411,6 +411,51 @@ def check_qa_pairs(info_file: str, view_index: int):
         print(f"A: {qa['answer']}")
         print("-" * 50)
 
+def build_qa_dataset(
+    split: str = "train",
+    out_name: str = "generated",
+    data_dir: str = "../data",
+    max_info_files: int | None = None,
+):
+    """
+    Build a *_qa_pairs.json file under data/<split>/ by looping over *_info.json
+    and all available view indices, then attaching image_file paths.
+    """
+    data_dir = Path(__file__).parent / data_dir
+    split_dir = data_dir / split
+
+    info_files = sorted(split_dir.glob("*_info.json"))
+    if max_info_files is not None:
+        info_files = info_files[:max_info_files]
+
+    qa_pairs_all: list[dict] = []
+
+    for info_file in info_files:
+        base = info_file.stem.replace("_info", "")  # e.g. "00000"
+        # dataset has views 00..09 typically
+        for view_index in range(10):
+            image_candidates = list(split_dir.glob(f"{base}_{view_index:02d}_im.jpg"))
+            if not image_candidates:
+                continue
+
+            # IMPORTANT: store path relative to data/ (matches how VQADataset builds image_path)
+            image_file_rel = f"{split}/{image_candidates[0].name}"
+
+            qa_list = generate_qa_pairs(str(info_file), view_index)
+            for qa in qa_list:
+                qa_pairs_all.append(
+                    {
+                        "image_file": image_file_rel,
+                        "question": qa["question"],
+                        "answer": qa["answer"],
+                    }
+                )
+
+    out_path = split_dir / f"{out_name}_qa_pairs.json"
+    with open(out_path, "w") as f:
+        json.dump(qa_pairs_all, f, indent=2)
+
+    print(f"Wrote {len(qa_pairs_all)} QA pairs to {out_path}")
 
 """
 Usage Example: Visualize QA pairs for a specific file and view:
@@ -421,7 +466,7 @@ You probably need to add additional commands to Fire below.
 
 
 def main():
-    fire.Fire({"check": check_qa_pairs})
+    fire.Fire({"check": check_qa_pairs, "build": build_qa_dataset})
 
 
 if __name__ == "__main__":
