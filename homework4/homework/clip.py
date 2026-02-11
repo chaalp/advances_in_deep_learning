@@ -351,10 +351,10 @@ def train(
     data_dir: Path | None = None,
     output_dir: str = "clip",
     num_train_epochs: float = 5, 
-    per_device_train_batch_size: int = 1024,
-    gradient_accumulation_steps: int = 1,
+    per_device_train_batch_size: int = 128,
+    gradient_accumulation_steps: int = 8,
     learning_rate: float = 5e-4,
-    num_workers: int = 16,
+    num_workers: int = 2,
 ):
     vlm = BaseVLM()
 
