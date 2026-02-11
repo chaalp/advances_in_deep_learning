@@ -98,7 +98,7 @@ class CaptionDatasetForTraining(Dataset):
         item = self.dataset[idx]
         image = Image.open(item["image_path"]).convert("RGB")
         
-        input_message = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": item["question"]}]}]
+        input_message = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": item["caption"]}]}]
         prompt = self.processor.apply_chat_template(input_message, add_generation_prompt=True)
         
         # Tokenize prompt alone to get exact length
