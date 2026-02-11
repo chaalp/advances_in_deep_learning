@@ -350,11 +350,11 @@ def get_target_modules_for_lora(model: nn.Module) -> list[str]:
 def train(
     data_dir: Path | None = None,
     output_dir: str = "clip",
-    num_train_epochs: float = 1, 
+    num_train_epochs: float = 0.25, 
     per_device_train_batch_size: int = 128,
-    gradient_accumulation_steps: int = 8,
+    gradient_accumulation_steps: int = 4,
     learning_rate: float = 5e-4,
-    num_workers: int = 2,
+    num_workers: int = 16,
 ):
     vlm = BaseVLM()
 
