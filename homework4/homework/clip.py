@@ -105,7 +105,7 @@ class CaptionDatasetForTraining(Dataset):
         prompt_inputs = self.processor(images=image, text=prompt, return_tensors="pt")
         prompt_len = prompt_inputs["input_ids"].shape[1]
 
-        full_text = prompt + item["answer"] + self.processor.tokenizer.eos_token
+        full_text = prompt + item["caption"] + self.processor.tokenizer.eos_token
         inputs = self.processor(images=image, text=full_text, return_tensors="pt", 
                                 padding=True, truncation=True)
 
