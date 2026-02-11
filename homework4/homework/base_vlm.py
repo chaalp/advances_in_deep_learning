@@ -30,23 +30,8 @@ class BaseVLM:
         #return question
         return (
             "Answer with ONLY the exact answer. No explanation. No extra words. No punctuation.\n"
-            "Use exactly one of the following formats when appropriate:\n"
-            "- single token: 0, 1, 2, 3, ...\n"
-            "- direction token: left | right | front | back\n"
-            "- relative token: front and left | front and right | back and left | back and right\n"
-            "\n"
-            "Examples:\n"
-            "Question: How many karts are there in the scenario?\n"
-            "Answer: 2\n"
-            "Question: Is amanda in front of or behind the ego car?\n"
-            "Answer: back\n"
-            "Question: Where is puffy relative to the ego car?\n"
-            "Answer: back and left\n"
-            "\n"
-            f"Question: {question}\n"
-            "Answer:"
+            f"{question}"
         )
-        
 
     def generate(self, image_path: str, question: str) -> str:
         """
