@@ -162,9 +162,9 @@ def extract_kart_objects(
 
     frame_detections = detections_all[view_index]
 
-    # ------------------------------------------------------------------
-    # Build track_id -> kart_name mapping (ROBUST VERSION)
-    # ------------------------------------------------------------------
+    # 
+    # Build track_id -> kart_name mapping
+    # 
     id_to_name = {}
 
     # Case 1: explicit dict mapping
@@ -175,7 +175,7 @@ def extract_kart_objects(
             except Exception:
                 continue
 
-    # Case 2: karts as LIST OF STRINGS  (THIS IS YOUR DATASET)
+    # Case 2: karts as LIST OF STRINGS
     elif isinstance(info.get("karts"), list) and info["karts"]:
         if isinstance(info["karts"][0], str):
             id_to_name = {i: name for i, name in enumerate(info["karts"])}
@@ -198,9 +198,9 @@ def extract_kart_objects(
             except Exception:
                 continue
 
-    # ------------------------------------------------------------------
+    # 
     # Scale detection boxes to resized image space
-    # ------------------------------------------------------------------
+    # 
     scale_x = img_width / ORIGINAL_WIDTH
     scale_y = img_height / ORIGINAL_HEIGHT
 
@@ -248,9 +248,9 @@ def extract_kart_objects(
     if not karts:
         return []
 
-    # ------------------------------------------------------------------
+    # 
     # Identify ego kart
-    # ------------------------------------------------------------------
+    # 
     ego_idx = None
 
     # Prefer track_id == 0
