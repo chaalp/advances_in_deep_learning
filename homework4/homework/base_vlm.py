@@ -29,11 +29,13 @@ class BaseVLM:
         """
         #return question
         return (
-            f"{question}\n\n"
-            "Answer with ONLY the final answer, lowercase, no extra words.\n"
-            "If the answer is a number, output digits only.\n"
-            "If the answer is a direction/position, use exactly one of: "
-            "left, right, front, back, front and left, front and right, back and left, back and right.\n"
+            "Answer with ONLY the exact answer. No explanation. No extra words. No punctuation.\n"
+            "Examples:\n"
+            "Question:How many karts are there?\n"
+            "Answer:2\n"
+            "Question:Is amanda in front of or behind the ego car?\n"
+            "Answer:back\n"
+            f"{question}"
         )
 
     def generate(self, image_path: str, question: str) -> str:
