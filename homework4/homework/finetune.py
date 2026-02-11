@@ -260,11 +260,11 @@ def demo_train():
     train(
         train_dataset_name="train_demo",
         output_dir="demo_train",
-        num_train_epochs=1,
+        num_train_epochs=10,
         per_device_train_batch_size=1,
         num_workers=1,
         gradient_accumulation_steps=1,
-        learning_rate=1e-8,
+        learning_rate=5e-4,
     )
 
 
