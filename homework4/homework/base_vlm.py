@@ -29,7 +29,7 @@ class BaseVLM:
         """
         #return question
         return (
-            "Answer with ONLY the exact answer. No explanation. No extra words. No punctuation.\n"
+            "Answer with ONLY the exact answer in lowercase. No explanation. No extra words. No punctuation.\n"
             f"{question}"
         )
 
