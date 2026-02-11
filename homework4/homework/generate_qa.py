@@ -162,28 +162,27 @@ def extract_kart_objects(
 
     frame_detections = detections_all[view_index]
 
-    # Helper: build track_id -> name mapping robustly
-    id_to_name: dict[int, str] = {}
+    # ------------------------------------------------------------------
+    # Build track_id -> kart_name mapping (ROBUST VERSION)
+    # ------------------------------------------------------------------
+    id_to_name = {}
 
-    # Case A: {"kart_id_to_name": {"0":"beastie", ...}}
-    if isinstance(info.get("kart_id_to_name", None), dict):
+    # Case 1: explicit dict mapping
+    if isinstance(info.get("kart_id_to_name"), dict):
         for k, v in info["kart_id_to_name"].items():
             try:
                 id_to_name[int(k)] = str(v)
             except Exception:
                 continue
 
-    # Case B: {"karts": ["nolok", "sara_the_racer", ...]}  <-- THIS IS YOUR DATASET
-    if not id_to_name and isinstance(info.get("karts", None), list):
-        klist = info["karts"]
+    # Case 2: karts as LIST OF STRINGS  (THIS IS YOUR DATASET)
+    elif isinstance(info.get("karts"), list) and info["karts"]:
+        if isinstance(info["karts"][0], str):
+            id_to_name = {i: name for i, name in enumerate(info["karts"])}
 
-        # list[str] form
-        if all(isinstance(x, str) for x in klist):
-            id_to_name = {i: name for i, name in enumerate(klist)}
-
-        # list[dict] form: [{"id":0,"name":"beastie"}, ...]
-        elif all(isinstance(x, dict) for x in klist):
-            for k in klist:
+        # Case 3: karts as list of dicts
+        elif isinstance(info["karts"][0], dict):
+            for k in info["karts"]:
                 if "id" in k and ("name" in k or "kart_name" in k):
                     try:
                         kid = int(k["id"])
@@ -191,47 +190,50 @@ def extract_kart_objects(
                     except Exception:
                         continue
 
-    # Case C: {"kart_names": {"0":"beastie", ...}}
-    if not id_to_name and isinstance(info.get("kart_names", None), dict):
+    # Case 4: alternate dict format
+    elif isinstance(info.get("kart_names"), dict):
         for k, v in info["kart_names"].items():
             try:
                 id_to_name[int(k)] = str(v)
             except Exception:
                 continue
 
-    # Scale detections from ORIGINAL_WIDTH/HEIGHT to current img size
+    # ------------------------------------------------------------------
+    # Scale detection boxes to resized image space
+    # ------------------------------------------------------------------
     scale_x = img_width / ORIGINAL_WIDTH
     scale_y = img_height / ORIGINAL_HEIGHT
 
     karts = []
+
     for det in frame_detections:
         if len(det) != 6:
             continue
+
         class_id, track_id, x1, y1, x2, y2 = det
         class_id = int(class_id)
         track_id = int(track_id)
 
-        if class_id != 1:  # only karts
+        if class_id != 1:  # Only karts
             continue
 
-        # scale to the resized image coordinate system
-        x1s = float(x1) * scale_x
-        y1s = float(y1) * scale_y
-        x2s = float(x2) * scale_x
-        y2s = float(y2) * scale_y
+        # Scale coordinates
+        x1s = x1 * scale_x
+        y1s = y1 * scale_y
+        x2s = x2 * scale_x
+        y2s = y2 * scale_y
 
-        # skip tiny boxes
+        # Skip tiny boxes
         if (x2s - x1s) < min_box_size or (y2s - y1s) < min_box_size:
             continue
 
-        # skip fully outside image
+        # Skip if fully outside image
         if x2s < 0 or x1s > img_width or y2s < 0 or y1s > img_height:
             continue
 
-        cx = (x1s + x2s) / 2.0
-        cy = (y1s + y2s) / 2.0
+        cx = (x1s + x2s) / 2
+        cy = (y1s + y2s) / 2
 
-        # name fallback: use track_id if missing mapping (should stop happening after fix)
         kart_name = id_to_name.get(track_id, str(track_id))
 
         karts.append(
@@ -246,22 +248,32 @@ def extract_kart_objects(
     if not karts:
         return []
 
-    # Prefer track_id==0 as ego if present; else closest to image center
+    # ------------------------------------------------------------------
+    # Identify ego kart
+    # ------------------------------------------------------------------
     ego_idx = None
+
+    # Prefer track_id == 0
     for i, k in enumerate(karts):
         if k["instance_id"] == 0:
             ego_idx = i
             break
 
+    # If not found, pick closest to image center
     if ego_idx is None:
-        img_cx, img_cy = img_width / 2.0, img_height / 2.0
+        img_cx, img_cy = img_width / 2, img_height / 2
         ego_idx = min(
             range(len(karts)),
-            key=lambda i: (karts[i]["center"][0] - img_cx) ** 2 + (karts[i]["center"][1] - img_cy) ** 2,
+            key=lambda i: (
+                (karts[i]["center"][0] - img_cx) ** 2
+                + (karts[i]["center"][1] - img_cy) ** 2
+            ),
         )
 
     karts[ego_idx]["is_center_kart"] = True
+
     return karts
+
 
 
 def extract_track_info(info_path: str) -> str:
