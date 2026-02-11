@@ -90,9 +90,8 @@ class BaseVLM:
 
         # Set generation parameters
         generate_params = {
-            "max_new_tokens": 10,
-            "do_sample": False,
-            "num_beams": 1,
+            "max_new_tokens": 32,
+            "do_sample": temperature > 0,
             "eos_token_id": self.processor.tokenizer.eos_token_id,
         }
 
