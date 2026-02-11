@@ -29,8 +29,18 @@ class BaseVLM:
         """
         #return question
         return (
-            "Answer with ONLY the exact answer in lowercase. No explanation. No extra words. No punctuation.\n"
-            f"{question}"
+            "TASK: Image Question Answering\n"
+            "CONSTRAINT: Answer with exactly one word or one number. "
+            "Use lowercase only. No sentences. No punctuation. No explanations.\n\n"
+            "EXAMPLES:\n"
+            "Question: Is the kart to the left or right?\n"
+            "Answer: left\n"
+            "Question: How many karts are there?\n"
+            "Answer: 2\n"
+            "Question: What track is this?\n"
+            "Answer: cocoa_temple\n\n"
+            f"Question: {question}\n"
+            "Answer:"
         )
 
     def generate(self, image_path: str, question: str) -> str:
