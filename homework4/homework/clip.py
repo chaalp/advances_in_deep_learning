@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torchvision as tv
@@ -78,21 +79,48 @@ class CaptionDatasetForTraining(Dataset):
     def __len__(self):
         return len(self.dataset)
 
-    def __getitem__(self, idx: int) -> dict[str, Any]:
+    # def __getitem__(self, idx: int) -> dict[str, Any]:
+    #     item = self.dataset[idx]
+    #     image = Image.open(item["image_path"]).convert("RGB")
+    #     pixel_values = self.image_processor(image)
+    #     text = item["caption"] + self.processor.tokenizer.eos_token
+    #     text_inputs = self.processor(text=text, return_tensors="pt", padding=True, truncation=True)
+    #     input_ids = text_inputs["input_ids"].squeeze(0).long()
+    #     attention_mask = text_inputs["attention_mask"].squeeze(0)
+    #     return {
+    #         "pixel_values": pixel_values,
+    #         "input_ids": input_ids,
+    #         "attention_mask": attention_mask,
+    #         "labels": input_ids,  # placeholder to fit the collator
+    #     }
+
+    def __getitem__(self, idx: int) -> dict:
         item = self.dataset[idx]
         image = Image.open(item["image_path"]).convert("RGB")
-        pixel_values = self.image_processor(image)
-        text = item["caption"] + self.processor.tokenizer.eos_token
-        text_inputs = self.processor(text=text, return_tensors="pt", padding=True, truncation=True)
-        input_ids = text_inputs["input_ids"].squeeze(0).long()
-        attention_mask = text_inputs["attention_mask"].squeeze(0)
-        return {
-            "pixel_values": pixel_values,
-            "input_ids": input_ids,
-            "attention_mask": attention_mask,
-            "labels": input_ids,  # placeholder to fit the collator
-        }
+        
+        input_message = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": item["question"]}]}]
+        prompt = self.processor.apply_chat_template(input_message, add_generation_prompt=True)
+        
+        # Tokenize prompt alone to get exact length
+        prompt_inputs = self.processor(images=image, text=prompt, return_tensors="pt")
+        prompt_len = prompt_inputs["input_ids"].shape[1]
 
+        full_text = prompt + item["answer"] + self.processor.tokenizer.eos_token
+        inputs = self.processor(images=image, text=full_text, return_tensors="pt", 
+                                padding=True, truncation=True)
+
+        input_ids = inputs["input_ids"].squeeze(0)
+        labels = input_ids.clone()
+        
+        # Mask everything including prompt and image tokens
+        labels[:prompt_len] = -100 
+        
+        return {
+            "input_ids": input_ids.long(),
+            "attention_mask": inputs["attention_mask"].squeeze(0).long(),
+            "pixel_values": inputs["pixel_values"].squeeze(0),
+            "labels": labels.long(),
+        }
 
 class CLIP(nn.Module):
     def __init__(
@@ -137,6 +165,9 @@ class CLIP(nn.Module):
 
         self.vision_projection = nn.Linear(vision_h, proj_dim, bias=False)
         self.text_projection = nn.Linear(text_h, proj_dim, bias=False)
+
+        # Learnable logit scale (CLIP standard)
+        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / temperature))
 
         # keep as float; simplest and stable
         self.temperature = float(temperature)
@@ -267,7 +298,11 @@ class CLIP(nn.Module):
         t = self.text_projection(t)
         t = torch.nn.functional.normalize(t, dim=-1)
 
-        logits = torch.matmul(v, t.T) / self.temperature
+        # Use learnable scale
+        logit_scale = self.logit_scale.exp()
+
+        #logits = torch.matmul(v, t.T) / self.temperature 
+        logits = torch.matmul(v, t.T) * logit_scale
         return v, t, logits
     
 def compute_clip_loss(
@@ -315,7 +350,7 @@ def get_target_modules_for_lora(model: nn.Module) -> list[str]:
 def train(
     data_dir: Path | None = None,
     output_dir: str = "clip",
-    num_train_epochs: float = 0.05,  # for debugging purpose, increase this once the dry run works
+    num_train_epochs: float = 5, 
     per_device_train_batch_size: int = 1024,
     gradient_accumulation_steps: int = 1,
     learning_rate: float = 5e-4,
@@ -345,6 +380,8 @@ def train(
         lora_dropout=0.0,
         # target_modules="all-linear",
         target_modules=get_target_modules_for_lora(model),
+        # Save and train these non-LoRA parameters
+        modules_to_save=["vision_projection", "text_projection", "logit_scale"],
         bias="none",
     )
     model = get_peft_model(model, peft_config)
