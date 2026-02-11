@@ -27,7 +27,17 @@ class BaseVLM:
         """
         Format the question into a prompt for the VLM.
         """
-        return question
+        #return question
+        return (
+            "Answer with ONLY the exact answer string.\n"
+            "No explanation. No extra words. No punctuation.\n"
+            "Examples:\n"
+            "Q: How many karts are there?\n"
+            "A: 2\n"
+            "Q: Is amanda in front of or behind the ego car?\n"
+            "A: back\n\n"
+            f"{question}"
+        )
 
     def generate(self, image_path: str, question: str) -> str:
         """
