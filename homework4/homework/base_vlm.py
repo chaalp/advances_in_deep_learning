@@ -29,14 +29,11 @@ class BaseVLM:
         """
         #return question
         return (
-            "Answer with ONLY the exact answer string.\n"
-            "No explanation. No extra words. No punctuation.\n"
-            "Examples:\n"
-            "Q: How many karts are there?\n"
-            "A: 2\n"
-            "Q: Is amanda in front of or behind the ego car?\n"
-            "A: back\n\n"
-            f"{question}"
+            f"{question}\n\n"
+            "Answer with ONLY the final answer, lowercase, no extra words.\n"
+            "If the answer is a number, output digits only.\n"
+            "If the answer is a direction/position, use exactly one of: "
+            "left, right, front, back, front and left, front and right, back and left, back and right.\n"
         )
 
     def generate(self, image_path: str, question: str) -> str:
@@ -98,7 +95,6 @@ class BaseVLM:
         generate_params = {
             "max_new_tokens": 5,
             "do_sample": False,
-            "temperature": 0.0,
             "num_beams": 1,
             "eos_token_id": self.processor.tokenizer.eos_token_id,
         }
