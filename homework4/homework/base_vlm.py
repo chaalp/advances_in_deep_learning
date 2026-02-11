@@ -29,14 +29,8 @@ class BaseVLM:
         """
         #return question
         return (
-            "System: You are a SuperTuxKart vision assistant.\n"
-            "Constraint: Answer with exactly one lowercase label from the following sets:\n"
-            "- Directions: [front, back, left, right, front and left, front and right, back and left, back and right]\n"
-            "- Karts: [adiumy, beastie, emule, gavroche, gnu, hexley, kiki, konqi, nolok, puffy, sara_the_racer, sara_the_wizard, suzanne, wilber, xue]\n"
-            "- Tracks: [abyss, black_forest, candela_city, cocoa_temple, gran_paradiso_island, hacienda, olivermath, overworld, sandtrack, snowmountain, tutorial, volcano_island, xr591, zengarden]\n"
-            "--- \n"
             f"Question: {question}\n"
-            "Answer:"
+            "Short, lowercase, one-word answer:"
         )
 
     def generate(self, image_path: str, question: str) -> str:
