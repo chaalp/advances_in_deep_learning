@@ -133,7 +133,7 @@ def train(
     lora_r: int = 8,
     lora_alpha: int = 32,
     lora_dropout: float = 0.0,
-    num_workers: int = 4,
+    num_workers: int = 2,
 ):
     """
     Fine-tune a VLM model using LoRA.
