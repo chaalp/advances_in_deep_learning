@@ -29,8 +29,18 @@ class BaseVLM:
         """
         #return question
         return (
+            "Answer with ONLY the exact answer. No explanation. No extra words. No punctuation.\n"
+            "Use these exact words when applicable:\n"
+            "- front, back\n"
+            "- left, right\n"
+            "- back and left, back and right, front and left, front and right\n"
+            "Examples:\n"
+            "Question: How many karts are there in the scenario?\n"
+            "Answer: 2\n"
+            "Question: Is amanda in front of or behind the ego car?\n"
+            "Answer: back\n"
             f"Question: {question}\n"
-            "Short, lowercase, one-word answer:"
+            "Answer:"
         )
 
     def generate(self, image_path: str, question: str) -> str:
