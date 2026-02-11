@@ -27,11 +27,8 @@ class BaseVLM:
         """
         Format the question into a prompt for the VLM.
         """
-        #return question
-        return (
-            f"Question: {question}\n"
-            "Short, lowercase, one-word answer:"
-        )
+        return question
+        
 
     def generate(self, image_path: str, question: str) -> str:
         """
@@ -90,7 +87,7 @@ class BaseVLM:
 
         # Set generation parameters
         generate_params = {
-            "max_new_tokens": 5,
+            "max_new_tokens": 10,
             "do_sample": False,
             "num_beams": 1,
             "eos_token_id": self.processor.tokenizer.eos_token_id,
