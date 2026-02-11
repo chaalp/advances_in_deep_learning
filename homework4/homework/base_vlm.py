@@ -29,16 +29,8 @@ class BaseVLM:
         """
         #return question
         return (
-            "You are a precise image labeling bot.\n"
-            "Rules: lowercase, no punctuation, exactly one word or number.\n"
-            "--- Examples ---\n"
-            "Q: What track is this?\n"
-            "A: hacienda\n"
-            "Q: How many karts?\n"
-            "A: 1\n"
-            "--- Task ---\n"
-            f"Q: {question}\n"
-            "A:"
+            f"Question: {question}\n"
+            "Short, lowercase, one-word answer:"
         )
 
     def generate(self, image_path: str, question: str) -> str:
