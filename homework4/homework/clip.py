@@ -235,19 +235,15 @@ class CLIP(nn.Module):
         if outputs is None:
             raise ValueError("Encoder returned None")
 
-        # HF outputs often have pooler_output or last_hidden_state
+        # Check for last_hidden_state and apply average pooling across the sequence
+        if hasattr(outputs, "last_hidden_state") and outputs.last_hidden_state is not None:
+            # Seq length is dim 1; mean pool across all tokens
+            return outputs.last_hidden_state.mean(dim=1)
+
+        # Fallback to pooler_output if mean pooling isn't possible
         if hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:
             return outputs.pooler_output
-        if hasattr(outputs, "last_hidden_state") and outputs.last_hidden_state is not None:
-            return outputs.last_hidden_state[:, 0]  # CLS token
-
-        # sometimes encoder returns tuple
-        if isinstance(outputs, (tuple, list)) and len(outputs) > 0:
-            x = outputs[0]
-            if x.dim() == 3:
-                return x[:, 0]
-            if x.dim() == 2:
-                return x
+            
         raise ValueError("Unable to pool encoder outputs into [B, H].")        
 
     def forward(
@@ -271,6 +267,11 @@ class CLIP(nn.Module):
             TODO: think about the what values should be returned
         """
         #raise NotImplementedError("Not implemented")
+
+        # Reshape pixel_values from (B, 1, 1, C, H, W) to (B, C, H, W)
+        if pixel_values.ndim > 4:
+            b, n_img, n_patch, c, h, w = pixel_values.shape
+            pixel_values = pixel_values.view(b * n_img * n_patch, c, h, w)
 
         """
         Returns:
@@ -351,8 +352,8 @@ def train(
     data_dir: Path | None = None,
     output_dir: str = "clip",
     num_train_epochs: float = 0.05, 
-    per_device_train_batch_size: int = 32,
-    gradient_accumulation_steps: int = 4,
+    per_device_train_batch_size: int = 128,
+    gradient_accumulation_steps: int = 8,
     learning_rate: float = 5e-4,
     num_workers: int = 2,
 ):
