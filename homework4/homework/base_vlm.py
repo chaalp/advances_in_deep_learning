@@ -28,20 +28,13 @@ class BaseVLM:
         Format the question into a prompt for the VLM.
         """
         #return question
-        karts = "[adiumy, beastie, emule, gavroche, gnu, hexley, kiki, konqi, nolok, puffy, sara_the_racer, sara_the_wizard, suzanne, wilber, xue]"
-        tracks = "[abyss, black_forest, candela_city, cocoa_temple, gran_paradiso_island, hacienda, olivermath, overworld, sandtrack, snowmountain, tutorial, volcano_island, xr591, zengarden]"
-        spatial = "[front, back, left, right, front and left, front and right, back and left, back and right]"
-
         return (
-            "TASK: VQA for SuperTuxKart. Answer based ONLY on the provided categories.\n"
-            f"VALID KARTS: {karts}\n"
-            f"VALID TRACKS: {tracks}\n"
-            f"VALID DIRECTIONS: {spatial}\n"
-            "--- RULES ---\n"
-            "- Lowercase only.\n"
-            "- No punctuation.\n"
-            "- If the question asks 'where', use the VALID DIRECTIONS list.\n"
-            "--- TASK ---\n"
+            "System: You are a SuperTuxKart vision assistant.\n"
+            "Constraint: Answer with exactly one lowercase label from the following sets:\n"
+            "- Directions: [front, back, left, right, front and left, front and right, back and left, back and right]\n"
+            "- Karts: [adiumy, beastie, emule, gavroche, gnu, hexley, kiki, konqi, nolok, puffy, sara_the_racer, sara_the_wizard, suzanne, wilber, xue]\n"
+            "- Tracks: [abyss, black_forest, candela_city, cocoa_temple, gran_paradiso_island, hacienda, olivermath, overworld, sandtrack, snowmountain, tutorial, volcano_island, xr591, zengarden]\n"
+            "--- \n"
             f"Question: {question}\n"
             "Answer:"
         )
