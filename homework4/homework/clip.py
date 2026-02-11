@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torchvision as tv
@@ -79,48 +78,21 @@ class CaptionDatasetForTraining(Dataset):
     def __len__(self):
         return len(self.dataset)
 
-    # def __getitem__(self, idx: int) -> dict[str, Any]:
-    #     item = self.dataset[idx]
-    #     image = Image.open(item["image_path"]).convert("RGB")
-    #     pixel_values = self.image_processor(image)
-    #     text = item["caption"] + self.processor.tokenizer.eos_token
-    #     text_inputs = self.processor(text=text, return_tensors="pt", padding=True, truncation=True)
-    #     input_ids = text_inputs["input_ids"].squeeze(0).long()
-    #     attention_mask = text_inputs["attention_mask"].squeeze(0)
-    #     return {
-    #         "pixel_values": pixel_values,
-    #         "input_ids": input_ids,
-    #         "attention_mask": attention_mask,
-    #         "labels": input_ids,  # placeholder to fit the collator
-    #     }
-
-    def __getitem__(self, idx: int) -> dict:
+    def __getitem__(self, idx: int) -> dict[str, Any]:
         item = self.dataset[idx]
         image = Image.open(item["image_path"]).convert("RGB")
-        
-        input_message = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": item["caption"]}]}]
-        prompt = self.processor.apply_chat_template(input_message, add_generation_prompt=True)
-        
-        # Tokenize prompt alone to get exact length
-        prompt_inputs = self.processor(images=image, text=prompt, return_tensors="pt")
-        prompt_len = prompt_inputs["input_ids"].shape[1]
-
-        full_text = prompt + item["caption"] + self.processor.tokenizer.eos_token
-        inputs = self.processor(images=image, text=full_text, return_tensors="pt", 
-                                padding=True, truncation=True)
-
-        input_ids = inputs["input_ids"].squeeze(0)
-        labels = input_ids.clone()
-        
-        # Mask everything including prompt and image tokens
-        labels[:prompt_len] = -100 
-        
+        pixel_values = self.image_processor(image)
+        text = item["caption"] + self.processor.tokenizer.eos_token
+        text_inputs = self.processor(text=text, return_tensors="pt", padding=True, truncation=True)
+        input_ids = text_inputs["input_ids"].squeeze(0).long()
+        attention_mask = text_inputs["attention_mask"].squeeze(0)
         return {
-            "input_ids": input_ids.long(),
-            "attention_mask": inputs["attention_mask"].squeeze(0).long(),
-            "pixel_values": inputs["pixel_values"].squeeze(0),
-            "labels": labels.long(),
+            "pixel_values": pixel_values,
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": input_ids,  # placeholder to fit the collator
         }
+
 
 class CLIP(nn.Module):
     def __init__(
@@ -165,9 +137,6 @@ class CLIP(nn.Module):
 
         self.vision_projection = nn.Linear(vision_h, proj_dim, bias=False)
         self.text_projection = nn.Linear(text_h, proj_dim, bias=False)
-
-        # Learnable logit scale (CLIP standard)
-        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / temperature))
 
         # keep as float; simplest and stable
         self.temperature = float(temperature)
@@ -235,15 +204,19 @@ class CLIP(nn.Module):
         if outputs is None:
             raise ValueError("Encoder returned None")
 
-        # Check for last_hidden_state and apply average pooling across the sequence
-        if hasattr(outputs, "last_hidden_state") and outputs.last_hidden_state is not None:
-            # Seq length is dim 1; mean pool across all tokens
-            return outputs.last_hidden_state.mean(dim=1)
-
-        # Fallback to pooler_output if mean pooling isn't possible
+        # HF outputs often have pooler_output or last_hidden_state
         if hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:
             return outputs.pooler_output
-            
+        if hasattr(outputs, "last_hidden_state") and outputs.last_hidden_state is not None:
+            return outputs.last_hidden_state[:, 0]  # CLS token
+
+        # sometimes encoder returns tuple
+        if isinstance(outputs, (tuple, list)) and len(outputs) > 0:
+            x = outputs[0]
+            if x.dim() == 3:
+                return x[:, 0]
+            if x.dim() == 2:
+                return x
         raise ValueError("Unable to pool encoder outputs into [B, H].")        
 
     def forward(
@@ -267,11 +240,6 @@ class CLIP(nn.Module):
             TODO: think about the what values should be returned
         """
         #raise NotImplementedError("Not implemented")
-
-        # Reshape pixel_values from (B, 1, 1, C, H, W) to (B, C, H, W)
-        if pixel_values.ndim > 4:
-            b, n_img, n_patch, c, h, w = pixel_values.shape
-            pixel_values = pixel_values.view(b * n_img * n_patch, c, h, w)
 
         """
         Returns:
@@ -299,11 +267,7 @@ class CLIP(nn.Module):
         t = self.text_projection(t)
         t = torch.nn.functional.normalize(t, dim=-1)
 
-        # Use learnable scale
-        logit_scale = self.logit_scale.exp()
-
-        #logits = torch.matmul(v, t.T) / self.temperature 
-        logits = torch.matmul(v, t.T) * logit_scale
+        logits = torch.matmul(v, t.T) / self.temperature
         return v, t, logits
     
 def compute_clip_loss(
@@ -351,11 +315,11 @@ def get_target_modules_for_lora(model: nn.Module) -> list[str]:
 def train(
     data_dir: Path | None = None,
     output_dir: str = "clip",
-    num_train_epochs: float = 0.05, 
-    per_device_train_batch_size: int = 128,
-    gradient_accumulation_steps: int = 8,
+    num_train_epochs: float = 0.05,  # for debugging purpose, increase this once the dry run works
+    per_device_train_batch_size: int = 1024,
+    gradient_accumulation_steps: int = 1,
     learning_rate: float = 5e-4,
-    num_workers: int = 2,
+    num_workers: int = 16,
 ):
     vlm = BaseVLM()
 
@@ -381,8 +345,6 @@ def train(
         lora_dropout=0.0,
         # target_modules="all-linear",
         target_modules=get_target_modules_for_lora(model),
-        # Save and train these non-LoRA parameters
-        modules_to_save=["vision_projection", "text_projection", "logit_scale"],
         bias="none",
     )
     model = get_peft_model(model, peft_config)
