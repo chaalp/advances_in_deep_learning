@@ -55,7 +55,7 @@ def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_
     for k in karts:
         if k is ego or k.get("is_center_kart", False):
             continue
-        pos = "in front of" if float(k["center"][1]) < ego_y else "behind"
+        pos = "in front of" if float(k["center"][1]) < ego_y else "back"
         captions.append(f"{k['kart_name']} is {pos} the ego car.")
 
     # 5) Count in front (extra useful signal)

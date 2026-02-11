@@ -377,7 +377,7 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
         if k is ego or k.get("is_center_kart", False):
             continue
         other_y = float(k["center"][1])
-        pos = "front" if other_y < ego_y else "behind"
+        pos = "front" if other_y < ego_y else "back"
         qa_pairs.append(
             {
                 "question": f"Is {k['kart_name']} in front of or behind the ego car?",
