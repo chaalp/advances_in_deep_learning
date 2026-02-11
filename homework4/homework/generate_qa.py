@@ -130,7 +130,6 @@ def draw_detections(
     # Convert PIL image to numpy array for matplotlib
     return np.array(pil_image)
 
-
 def extract_kart_objects(
     info_path: str, view_index: int, img_width: int = 150, img_height: int = 100, min_box_size: int = 5
 ) -> list:
@@ -164,9 +163,9 @@ def extract_kart_objects(
     frame_detections = detections_all[view_index]
 
     # Helper: build track_id -> name mapping robustly
-    id_to_name = {}
+    id_to_name: dict[int, str] = {}
 
-    # common: {"kart_id_to_name": {"0":"beastie", ...}}
+    # Case A: {"kart_id_to_name": {"0":"beastie", ...}}
     if isinstance(info.get("kart_id_to_name", None), dict):
         for k, v in info["kart_id_to_name"].items():
             try:
@@ -174,17 +173,25 @@ def extract_kart_objects(
             except Exception:
                 continue
 
-    # alternate: {"karts": [{"id":0,"name":"beastie"}, ...]}
+    # Case B: {"karts": ["nolok", "sara_the_racer", ...]}  <-- THIS IS YOUR DATASET
     if not id_to_name and isinstance(info.get("karts", None), list):
-        for k in info["karts"]:
-            if isinstance(k, dict) and "id" in k and ("name" in k or "kart_name" in k):
-                try:
-                    kid = int(k["id"])
-                    id_to_name[kid] = str(k.get("name", k.get("kart_name")))
-                except Exception:
-                    continue
+        klist = info["karts"]
 
-    # alternate: {"kart_names": {"0":"beastie", ...}}
+        # list[str] form
+        if all(isinstance(x, str) for x in klist):
+            id_to_name = {i: name for i, name in enumerate(klist)}
+
+        # list[dict] form: [{"id":0,"name":"beastie"}, ...]
+        elif all(isinstance(x, dict) for x in klist):
+            for k in klist:
+                if "id" in k and ("name" in k or "kart_name" in k):
+                    try:
+                        kid = int(k["id"])
+                        id_to_name[kid] = str(k.get("name", k.get("kart_name")))
+                    except Exception:
+                        continue
+
+    # Case C: {"kart_names": {"0":"beastie", ...}}
     if not id_to_name and isinstance(info.get("kart_names", None), dict):
         for k, v in info["kart_names"].items():
             try:
@@ -224,7 +231,7 @@ def extract_kart_objects(
         cx = (x1s + x2s) / 2.0
         cy = (y1s + y2s) / 2.0
 
-        # name fallback: use track_id if missing mapping
+        # name fallback: use track_id if missing mapping (should stop happening after fix)
         kart_name = id_to_name.get(track_id, str(track_id))
 
         karts.append(
