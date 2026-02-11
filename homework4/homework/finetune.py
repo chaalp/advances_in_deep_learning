@@ -65,47 +65,62 @@ class VQADatasetForTraining(Dataset):
 
     def __getitem__(self, idx: int) -> dict:
         item = self.dataset[idx]
-        image = Image.open(item["image_path"]).convert("RGB")
-        # Prepare input text in chat format
-        input_message = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": item["question"]}]}]
-        prompt = self.processor.apply_chat_template(input_message, add_generation_prompt=True)
-        full_text = prompt + item["answer"]  # append the answer to the prompt
 
+        image = Image.open(item["image_path"]).convert("RGB")
+
+        input_message = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image"},
+                    {"type": "text", "text": item["question"]},
+                ],
+            }
+        ]
+
+        prompt = self.processor.apply_chat_template(
+            input_message,
+            add_generation_prompt=True
+        )
+
+        # prompt-only (to get prompt_len)
+        prompt_inputs = self.processor(
+            images=image,
+            text=prompt,
+            return_tensors="pt",
+            padding=False,
+            truncation=True,
+            padding_side="left",
+        )
+        prompt_len = prompt_inputs["input_ids"].shape[-1]
+
+        # prompt + answer (+ EOS is helpful)
+        full_text = prompt + " " + str(item["answer"]) + self.processor.tokenizer.eos_token
         inputs = self.processor(
             images=image,
             text=full_text,
             return_tensors="pt",
-            padding=True,
+            padding=False,
             truncation=True,
             padding_side="left",
         )
 
         input_ids = inputs["input_ids"].squeeze(0)
         attention_mask = inputs["attention_mask"].squeeze(0)
+        pixel_values = inputs["pixel_values"].squeeze(0)
 
-        # Get answer length
-        answer_ids = self.processor(
-            images=None, text=item["answer"], return_tensors="pt", truncation=True
-        ).input_ids.squeeze(0)
-        answer_len = len(answer_ids)
+        # Clamp in case of truncation
+        prompt_len = min(prompt_len, input_ids.shape[0])
 
-        # Prepare labels: mask everything except the answer tokens
         labels = input_ids.clone()
-        labels[:-answer_len] = -100  # only keep loss on answer
-
-        # Ensure EOS token is at the end of the sequence
-        if input_ids[-1] != self.processor.tokenizer.eos_token_id:
-            input_ids = torch.cat([input_ids, torch.tensor([self.processor.tokenizer.eos_token_id])])
-            attention_mask = torch.cat([attention_mask, torch.tensor([1])])
-            labels = torch.cat([labels, torch.tensor([self.processor.tokenizer.eos_token_id])])
+        labels[:prompt_len] = -100
 
         return {
-            "input_ids": input_ids.long(),
-            "attention_mask": attention_mask.long(),
-            "pixel_values": inputs["pixel_values"].squeeze(0),
-            "labels": labels.long(),
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "pixel_values": pixel_values,
+            "labels": labels,
         }
-
 
 def train(
     data_dir: Path | None = None,
@@ -114,11 +129,11 @@ def train(
     num_train_epochs: int = 0.05,  # use only 0.05 epoch for training
     per_device_train_batch_size: int = 8,
     gradient_accumulation_steps: int = 4,
-    learning_rate: float = 1e-4,
+    learning_rate: float = 5e-4,
     lora_r: int = 8,
     lora_alpha: int = 32,
     lora_dropout: float = 0.0,
-    num_workers: int = 2,
+    num_workers: int = 4,
 ):
     """
     Fine-tune a VLM model using LoRA.
