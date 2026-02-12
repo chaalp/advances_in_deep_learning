@@ -25,17 +25,17 @@
   "rank_pattern": {},
   "revision": null,
   "target_modules": [
+    "q_proj",
     "v_proj",
     "up_proj",
-    "fc1",
-    "down_proj",
-    "out_proj",
+    "k_proj",
+    "fc2",
     "gate_proj",
     "o_proj",
+    "fc1",
     "proj",
-    "q_proj",
-    "fc2",
-    "k_proj"
+    "down_proj",
+    "out_proj"
   ],
   "task_type": "CAUSAL_LM",
   "trainable_token_indices": null,
