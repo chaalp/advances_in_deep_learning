@@ -98,6 +98,44 @@ def count_sentence(n: int, relation: str) -> str:
     else:
         return f"There are {n} karts {relation}."
 
+# def build_captions_dataset(
+#     split: str = "train",
+#     out_name: str = "generated",
+#     data_dir: str = "../data",
+#     max_info_files: int | None = None,
+# ):
+#     """
+#     Build a *_captions.json file under data/<split>/ by looping over *_info.json
+#     and all available view indices, then attaching image_file paths.
+#     """
+#     data_dir = Path(__file__).parent / data_dir
+#     split_dir = data_dir / split
+
+#     info_files = sorted(split_dir.glob("*_info.json"))
+#     if max_info_files is not None:
+#         info_files = info_files[:max_info_files]
+
+#     all_pairs: list[dict] = []
+
+#     for info_file in info_files:
+#         base = info_file.stem.replace("_info", "")
+#         for view_index in range(10):
+#             image_candidates = list(split_dir.glob(f"{base}_{view_index:02d}_im.jpg"))
+#             if not image_candidates:
+#                 continue
+
+#             image_file_rel = f"{split}/{image_candidates[0].name}"
+
+#             captions = generate_caption(str(info_file), view_index)
+#             for cap in captions:
+#                 all_pairs.append({"image_file": image_file_rel, "caption": cap})
+
+#     out_path = split_dir / f"{out_name}_captions.json"
+#     with open(out_path, "w") as f:
+#         json.dump(all_pairs, f, indent=2)
+
+#     print(f"Wrote {len(all_pairs)} captions to {out_path}")
+
 def build_captions_dataset(
     split: str = "train",
     out_name: str = "generated",
@@ -105,8 +143,7 @@ def build_captions_dataset(
     max_info_files: int | None = None,
 ):
     """
-    Build a *_captions.json file under data/<split>/ by looping over *_info.json
-    and all available view indices, then attaching image_file paths.
+    Memory-safe version: writes JSON incrementally instead of storing everything in RAM.
     """
     data_dir = Path(__file__).parent / data_dir
     split_dir = data_dir / split
@@ -115,26 +152,36 @@ def build_captions_dataset(
     if max_info_files is not None:
         info_files = info_files[:max_info_files]
 
-    all_pairs: list[dict] = []
-
-    for info_file in info_files:
-        base = info_file.stem.replace("_info", "")
-        for view_index in range(10):
-            image_candidates = list(split_dir.glob(f"{base}_{view_index:02d}_im.jpg"))
-            if not image_candidates:
-                continue
-
-            image_file_rel = f"{split}/{image_candidates[0].name}"
-
-            captions = generate_caption(str(info_file), view_index)
-            for cap in captions:
-                all_pairs.append({"image_file": image_file_rel, "caption": cap})
-
     out_path = split_dir / f"{out_name}_captions.json"
-    with open(out_path, "w") as f:
-        json.dump(all_pairs, f, indent=2)
 
-    print(f"Wrote {len(all_pairs)} captions to {out_path}")
+    count = 0
+    first = True
+
+    with open(out_path, "w") as f:
+        f.write("[\n")
+
+        for info_file in info_files:
+            base = info_file.stem.replace("_info", "")
+
+            for view_index in range(10):
+                image_candidates = list(split_dir.glob(f"{base}_{view_index:02d}_im.jpg"))
+                if not image_candidates:
+                    continue
+
+                image_file_rel = f"{split}/{image_candidates[0].name}"
+                captions = generate_caption(str(info_file), view_index)
+
+                for cap in captions:
+                    if not first:
+                        f.write(",\n")
+                    json.dump({"image_file": image_file_rel, "caption": cap}, f)
+                    first = False
+                    count += 1
+
+        f.write("\n]")
+
+    print(f"Wrote {count} captions to {out_path}")
+
 
 def check_caption(info_file: str, view_index: int):
     captions = generate_caption(info_file, view_index)
