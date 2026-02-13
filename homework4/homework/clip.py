@@ -295,15 +295,19 @@ class CLIP(nn.Module):
         labels: torch.Tensor = None,
         **kwargs,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # 1. Vision Encoding (standard CLS pooling)
+        # 1. Vision Encoding
         v_out = self.vision_encoder(pixel_values=pixel_values)
         v = v_out.last_hidden_state[:, 0]
+        # CAST: Ensure vision features match the linear layer's dtype
+        v = v.to(self.vision_projection.weight.dtype) 
         v = self.vision_projection(v)
         v = torch.nn.functional.normalize(v, dim=-1)
 
-        # 2. Text Encoding (Mean Pooling for Llama)
+        # 2. Text Encoding
         t_out = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask)
         t = self._pool(t_out, attention_mask)
+        # CAST: This is where your previous run crashed.
+        t = t.to(self.text_projection.weight.dtype) 
         t = self.text_projection(t)
         t = torch.nn.functional.normalize(t, dim=-1)
 
@@ -455,7 +459,8 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
     testset = MultiChoiceQADataset(val_dataset)
 
     clip = load(ckpt_path)
-    clip = clip.model.to(device).eval()
+    # Cast the entire model to the device and bf16 immediately
+    clip = clip.to(device).to(torch.bfloat16).eval()
 
     image_processor = tv.transforms.Compose(
         [
