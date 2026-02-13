@@ -319,7 +319,7 @@ def train(
     output_dir: str = "clip_model",
     num_train_epochs: float = 0.2,  # for debugging purpose, increase this once the dry run works
     per_device_train_batch_size: int = 18,
-    gradient_accumulation_steps: int = 3,
+    gradient_accumulation_steps: int = 2,
     learning_rate: float = 5e-4,
     num_workers: int = 2,
 ):
@@ -444,18 +444,12 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
         input_ids = text_inputs["input_ids"].long().to(device)
         attention_mask = text_inputs["attention_mask"].to(device)
 
-        # vision_feature, text_feature, _ = clip(pixel_values, input_ids, attention_mask)
-        # prediction = torch.matmul(vision_feature, text_feature.T).argmax(dim=-1)
-        # if prediction == pair["correct_index"]:
-        #     correct_count += 1
-        # total_count += 1
-
         with torch.no_grad():
             vision_feature, text_feature, logits = clip(pixel_values, input_ids, attention_mask)
-            pred_idx = int(logits.argmax(dim=-1).item())
+            prediction = torch.matmul(vision_feature, text_feature.T).argmax(dim=-1)
 
         gt_idx = int(pair["correct_index"])
-        is_correct = (pred_idx == gt_idx)
+        is_correct = (prediction == gt_idx)
         if is_correct:
             correct_count += 1
         total_count += 1
@@ -466,7 +460,7 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
             for i, c in enumerate(pair["candidates"]):
                 print(f"  {i}: {c}")
             print("GT:", pair["candidates"][gt_idx], f"(idx={gt_idx})")
-            print("Pred:", pair["candidates"][pred_idx], f"(idx={pred_idx})")
+            print("Pred:", pair["candidates"][prediction], f"(idx={prediction})")
 
             # Top-5 for debugging
             flat = logits.squeeze(0)
