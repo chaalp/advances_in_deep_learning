@@ -34,7 +34,8 @@ def load(model_name: str = "clip_model"):
     clip.model.load_pretrained(model_path)
     clip.model.eval()
     if device == "cuda":
-        clip = clip.to(dtype=torch.bfloat16)
+        #clip = clip.to(dtype=torch.bfloat16)
+        clip = clip.to(dtype=torch.float16)
 
     return clip
 
