@@ -243,31 +243,33 @@ class CLIP(nn.Module):
 
         """
         Returns:
-        vision_features: [B, D]
-        text_features:   [B, D]
-        logits:          [B, B]  (image->text similarity)
+            vision_feature: (1, D) if pixel_values is (1, C, H, W)
+            text_feature:  (N, D) for N candidate texts
+            logits:        (1, N)
         """
-        # Vision forward: try keyword first (HF style), fall back to positional
-        try:
-            v_out = self.vision_encoder(pixel_values=pixel_values)
-        except TypeError:
-            v_out = self.vision_encoder(pixel_values)
 
-        v = self._pool(v_out)
+        # ---- Vision ----
+        v_out = self.vision_encoder(pixel_values=pixel_values)
+        v_hs = v_out.last_hidden_state  # (B, T, H)
+        v = v_hs[:, 0]                  # ViT CLS token is fine
         v = self.vision_projection(v)
         v = torch.nn.functional.normalize(v, dim=-1)
 
-        # Text forward
-        try:
-            t_out = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask)
-        except TypeError:
-            t_out = self.text_encoder(input_ids, attention_mask)
+        # ---- Text ----
+        t_out = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask)
+        t_hs = t_out.last_hidden_state  # (N, L, H)
 
-        t = self._pool(t_out)
+        # Pool using LAST non-pad token (critical fix; CLS pooling collapses for causal LMs)
+        last_idx = attention_mask.long().sum(dim=1) - 1  # (N,)
+        last_idx = last_idx.clamp(min=0)
+        t = t_hs[torch.arange(t_hs.size(0), device=t_hs.device), last_idx]  # (N, H)
+
         t = self.text_projection(t)
         t = torch.nn.functional.normalize(t, dim=-1)
 
-        logits = torch.matmul(v, t.T) / self.temperature
+        # ---- Similarity ----
+        logits = v @ t.T  # (B, N)
+
         return v, t, logits
     
 def compute_clip_loss(
@@ -413,7 +415,7 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
     testset = MultiChoiceQADataset(val_dataset)
 
     clip = load(ckpt_path)
-    clip = clip.model.to(device)
+    clip = clip.model.to(device).eval()
 
     image_processor = tv.transforms.Compose(
         [
@@ -430,7 +432,9 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
 
     for pair in tqdm.tqdm(testset):
         image = Image.open(pair["image_path"]).convert("RGB")
+        
         pixel_values = image_processor(image).unsqueeze(0).to(device).bfloat16()
+
         text_inputs = processor(
             text=[s + processor.tokenizer.eos_token for s in pair["candidates"]],
             return_tensors="pt",
@@ -447,9 +451,8 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
         # total_count += 1
 
         with torch.no_grad():
-            vision_feature, text_feature, _ = clip(pixel_values, input_ids, attention_mask)
-            logits = (vision_feature @ text_feature.T).squeeze(0)   # (num_candidates,)
-            pred_idx = int(logits.argmax().item())
+            vision_feature, text_feature, logits = clip(pixel_values, input_ids, attention_mask)
+            pred_idx = int(logits.argmax(dim=-1).item())
 
         gt_idx = int(pair["correct_index"])
         is_correct = (pred_idx == gt_idx)
@@ -458,16 +461,19 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
         total_count += 1
 
         if shown < debug_n and ((not only_wrong) or (not is_correct)):
-            q = pair.get("question", "<no question field>")
             print("\n---")
-            print("Q:", q)
+            print("Q:", pair.get("question", "<no question field>"))
             print("GT:", pair["candidates"][gt_idx], f"(idx={gt_idx})")
             print("Pred:", pair["candidates"][pred_idx], f"(idx={pred_idx})")
-            topk = torch.topk(logits, k=min(5, logits.numel()))
-            print("Top-5:", [(pair["candidates"][i], float(v)) for v, i in zip(topk.values, topk.indices)])
+
+            # Top-5 for debugging
+            flat = logits.squeeze(0)
+            k = min(5, flat.numel())
+            topk = torch.topk(flat, k=k)
+            print("Top-5:", [(pair["candidates"][int(i)], float(v)) for v, i in zip(topk.values, topk.indices)])
             shown += 1
 
-    print(f"Accuracy: {correct_count / total_count}")
+    print(f"Accuracy: {correct_count / total_count:.4f}")
 
 
 def main():
