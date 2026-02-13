@@ -1,5 +1,6 @@
 import json
 import os
+import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -70,7 +71,14 @@ class CaptionDataset:
         for caption_file in caption_files:
             with open(caption_file) as f:
                 captions = json.load(f)
-                self.captions.extend(captions)
+                #self.captions.extend(captions)
+
+            for row in captions:
+                cap = row["caption"]
+                # Drop 70% of track captions
+                if cap.startswith("The track is ") and random.random() < 0.7:
+                    continue
+                self.captions.append(row)                
 
         if max_samples is not None:
             self.captions = self.captions[:max_samples]

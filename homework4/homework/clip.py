@@ -318,7 +318,7 @@ def train(
     data_dir: Path | None = None,
     output_dir: str = "clip_model",
     num_train_epochs: float = 0.1,  # for debugging purpose, increase this once the dry run works
-    per_device_train_batch_size: int = 16,
+    per_device_train_batch_size: int = 4,
     gradient_accumulation_steps: int = 8,
     learning_rate: float = 5e-4,
     num_workers: int = 2,
@@ -336,7 +336,8 @@ def train(
     # Initialize model and processor
     vision_encoder = vlm.model.model.vision_model
     text_encoder = vlm.model.model.text_model
-    model = CLIP(vision_encoder, text_encoder).to(device).bfloat16()
+    #model = CLIP(vision_encoder, text_encoder).to(device).bfloat16()
+    model = CLIP(vision_encoder, text_encoder).to(device).half()
     model.set_trainable_parameters()
 
     peft_config = LoraConfig(
@@ -369,7 +370,9 @@ def train(
         gradient_accumulation_steps=gradient_accumulation_steps,
         gradient_checkpointing=True,
         learning_rate=learning_rate,
-        bf16=True if device == "cuda" else False,
+        #bf16=True if device == "cuda" else False,
+        bf16=False,
+        fp16=True,
         logging_steps=1,
         save_strategy="steps",
         save_steps=50,
@@ -433,7 +436,9 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
     for pair in tqdm.tqdm(testset):
         image = Image.open(pair["image_path"]).convert("RGB")
         
-        pixel_values = image_processor(image).unsqueeze(0).to(device).bfloat16()
+        #pixel_values = image_processor(image).unsqueeze(0).to(device).bfloat16()
+
+        pixel_values = image_processor(image).unsqueeze(0).to(device).half()
 
         text_inputs = processor(
             text=[s + processor.tokenizer.eos_token for s in pair["candidates"]],
