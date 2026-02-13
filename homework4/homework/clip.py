@@ -462,7 +462,9 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
 
         if shown < debug_n and ((not only_wrong) or (not is_correct)):
             print("\n---")
-            print("Q:", pair.get("question", "<no question field>"))
+            print("Candidates:")
+            for i, c in enumerate(pair["candidates"]):
+                print(f"  {i}: {c}")
             print("GT:", pair["candidates"][gt_idx], f"(idx={gt_idx})")
             print("Pred:", pair["candidates"][pred_idx], f"(idx={pred_idx})")
 
