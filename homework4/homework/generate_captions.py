@@ -7,8 +7,8 @@ from .generate_qa import draw_detections, extract_frame_info
 
 import json
 
-'''
-def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_height: int = 100) -> list:
+
+def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_height: int = 100) -> list[str]:
     """
     Generate caption for a specific view.
     """
@@ -26,56 +26,6 @@ def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_
 
     #raise NotImplementedError("Not implemented")
 
-    """
-    Generate caption(s) for a specific view.
-    Captions mirror the QA semantics with atomic statements.
-    """
-    # reuse QA helpers from generate_qa
-    from .generate_qa import extract_kart_objects, extract_track_info
-
-    karts = extract_kart_objects(info_path, view_index, img_width=img_width, img_height=img_height)
-    if not karts:
-        return []
-
-    ego = next((k for k in karts if k.get("is_center_kart", False)), karts[0])
-    track_name = extract_track_info(info_path)
-
-    captions = []
-
-    # 1) Ego
-    captions.append(f"{ego['kart_name']} is the ego car.")
-
-    # 2) Counting (match demo phrasing)
-    captions.append(f"There are {len(karts)} karts in the scene.")
-
-    # 3) Track
-    captions.append(f"The track is {track_name}.")
-
-    # 4) Relative position for each non-ego kart
-    ego_y = float(ego["center"][1])
-    for k in karts:
-        if k is ego or k.get("is_center_kart", False):
-            continue
-        pos = "in front of" if float(k["center"][1]) < ego_y else "behind"
-        captions.append(f"{k['kart_name']} is {pos} of the ego car.")
-
-    # 5) Count in front (extra useful signal)
-    num_front = sum(
-        1 for k in karts if not k.get("is_center_kart", False) and float(k["center"][1]) < ego_y
-    )
-    captions.append(f"There are {num_front} karts in front of the ego car.")
-
-    return captions
-'''
-
-def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_height: int = 100) -> list[str]:
-    """
-    Generate caption(s) for a specific view.
-
-    IMPORTANT: These captions are designed to match the MultiChoiceQADataset
-    candidate templates EXACTLY (e.g., "scene" not "scenario", "behind the ego car",
-    "in front of the ego car", "left/right of the ego car").
-    """
     from .generate_qa import extract_kart_objects, extract_track_info
 
     karts = extract_kart_objects(info_path, view_index, img_width=img_width, img_height=img_height)
@@ -87,7 +37,7 @@ def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_
 
     captions: list[str] = []
 
-    # --- helpers ---
+    # helpers
     ego_x = float(ego["center"][0])
     ego_y = float(ego["center"][1])
 
