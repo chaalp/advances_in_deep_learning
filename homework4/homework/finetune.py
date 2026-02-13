@@ -131,7 +131,7 @@ def train(
     gradient_accumulation_steps: int = 4,
     learning_rate: float = 5e-4,
     lora_r: int = 9,
-    lora_alpha: int = 32,
+    lora_alpha: int = 36,
     lora_dropout: float = 0.0,
     num_workers: int = 2,
 ):
