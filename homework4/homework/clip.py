@@ -407,7 +407,7 @@ def demo_train():
     )
 
 
-def test(ckpt_path: str, val_dataset: str = "valid_grader"):
+def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, only_wrong: bool = True):
     import tqdm
 
     testset = MultiChoiceQADataset(val_dataset)
@@ -426,6 +426,7 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader"):
 
     correct_count = 0
     total_count = 0
+    shown = 0
 
     for pair in tqdm.tqdm(testset):
         image = Image.open(pair["image_path"]).convert("RGB")
@@ -438,11 +439,33 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader"):
         )
         input_ids = text_inputs["input_ids"].long().to(device)
         attention_mask = text_inputs["attention_mask"].to(device)
-        vision_feature, text_feature, _ = clip(pixel_values, input_ids, attention_mask)
-        prediction = torch.matmul(vision_feature, text_feature.T).argmax(dim=-1)
-        if prediction == pair["correct_index"]:
+
+        # vision_feature, text_feature, _ = clip(pixel_values, input_ids, attention_mask)
+        # prediction = torch.matmul(vision_feature, text_feature.T).argmax(dim=-1)
+        # if prediction == pair["correct_index"]:
+        #     correct_count += 1
+        # total_count += 1
+
+        with torch.no_grad():
+            vision_feature, text_feature, _ = clip(pixel_values, input_ids, attention_mask)
+            logits = (vision_feature @ text_feature.T).squeeze(0)   # (num_candidates,)
+            pred_idx = int(logits.argmax().item())
+
+        gt_idx = int(pair["correct_index"])
+        is_correct = (pred_idx == gt_idx)
+        if is_correct:
             correct_count += 1
         total_count += 1
+
+        if shown < debug_n and ((not only_wrong) or (not is_correct)):
+            q = pair.get("question", "<no question field>")
+            print("\n---")
+            print("Q:", q)
+            print("GT:", pair["candidates"][gt_idx], f"(idx={gt_idx})")
+            print("Pred:", pair["candidates"][pred_idx], f"(idx={pred_idx})")
+            topk = torch.topk(logits, k=min(5, logits.numel()))
+            print("Top-5:", [(pair["candidates"][i], float(v)) for v, i in zip(topk.values, topk.indices)])
+            shown += 1
 
     print(f"Accuracy: {correct_count / total_count}")
 
