@@ -162,9 +162,7 @@ def extract_kart_objects(
 
     frame_detections = detections_all[view_index]
 
-    # 
     # Build track_id -> kart_name mapping
-    # 
     id_to_name = {}
 
     # Case 1: explicit dict mapping
@@ -198,9 +196,7 @@ def extract_kart_objects(
             except Exception:
                 continue
 
-    # 
     # Scale detection boxes to resized image space
-    # 
     scale_x = img_width / ORIGINAL_WIDTH
     scale_y = img_height / ORIGINAL_HEIGHT
 
@@ -248,9 +244,7 @@ def extract_kart_objects(
     if not karts:
         return []
 
-    # 
     # Identify ego kart
-    # 
     ego_idx = None
 
     # Prefer track_id == 0
@@ -342,16 +336,6 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
 
     #raise NotImplementedError("Not implemented")
 
-    """
-    Generate question-answer pairs for a given view.
-
-    IMPORTANT: Match the demo distribution:
-      1) What kart is the ego car?
-      2) How many karts are there in the scenario?
-      3) What track is this?
-      4) Is {kart} in front of or behind the ego car? (for each non-ego kart)
-      5) How many karts are in front of the ego car?
-    """
     karts = extract_kart_objects(info_path, view_index, img_width=img_width, img_height=img_height)
     if not karts:
         return []
@@ -371,7 +355,7 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
     qa_pairs.append({"question": "What track is this?", "answer": str(track_name)})
 
     # 4) Relative position for each other kart (front/behind)
-    # Convention: smaller y is higher in image (more "front")
+    # smaller y is higher in image (more "front")
     ego_y = float(ego["center"][1])
     for k in karts:
         if k is ego or k.get("is_center_kart", False):
@@ -457,7 +441,7 @@ def build_qa_dataset(
             if not image_candidates:
                 continue
 
-            # IMPORTANT: store path relative to data/ (matches how VQADataset builds image_path)
+            # store path relative to data/ (matches how VQADataset builds image_path)
             image_file_rel = f"{split}/{image_candidates[0].name}"
 
             qa_list = generate_qa_pairs(str(info_file), view_index)
