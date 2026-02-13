@@ -7,6 +7,7 @@ from .generate_qa import draw_detections, extract_frame_info
 
 import json
 
+'''
 def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_height: int = 100) -> list:
     """
     Generate caption for a specific view.
@@ -45,7 +46,7 @@ def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_
     captions.append(f"{ego['kart_name']} is the ego car.")
 
     # 2) Counting (match demo phrasing)
-    captions.append(f"There are {len(karts)} karts in the scenario.")
+    captions.append(f"There are {len(karts)} karts in the scene.")
 
     # 3) Track
     captions.append(f"The track is {track_name}.")
@@ -55,8 +56,8 @@ def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_
     for k in karts:
         if k is ego or k.get("is_center_kart", False):
             continue
-        pos = "in front of" if float(k["center"][1]) < ego_y else "back"
-        captions.append(f"{k['kart_name']} is {pos} the ego car.")
+        pos = "in front of" if float(k["center"][1]) < ego_y else "behind"
+        captions.append(f"{k['kart_name']} is {pos} of the ego car.")
 
     # 5) Count in front (extra useful signal)
     num_front = sum(
@@ -65,6 +66,82 @@ def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_
     captions.append(f"There are {num_front} karts in front of the ego car.")
 
     return captions
+'''
+
+def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_height: int = 100) -> list[str]:
+    """
+    Generate caption(s) for a specific view.
+
+    IMPORTANT: These captions are designed to match the MultiChoiceQADataset
+    candidate templates EXACTLY (e.g., "scene" not "scenario", "behind the ego car",
+    "in front of the ego car", "left/right of the ego car").
+    """
+    from .generate_qa import extract_kart_objects, extract_track_info
+
+    karts = extract_kart_objects(info_path, view_index, img_width=img_width, img_height=img_height)
+    if not karts:
+        return []
+
+    ego = next((k for k in karts if k.get("is_center_kart", False)), karts[0])
+    track_name = extract_track_info(info_path)
+
+    captions: list[str] = []
+
+    # --- helpers ---
+    ego_x = float(ego["center"][0])
+    ego_y = float(ego["center"][1])
+
+    # Small deadzone so tiny pixel jitter doesn't flip left/right/front/back
+    EPS_X = 3.0
+    EPS_Y = 3.0
+
+    def is_front(k) -> bool:
+        return float(k["center"][1]) < ego_y - EPS_Y
+
+    def is_behind(k) -> bool:
+        return float(k["center"][1]) > ego_y + EPS_Y
+
+    def is_left(k) -> bool:
+        return float(k["center"][0]) < ego_x - EPS_X
+
+    def is_right(k) -> bool:
+        return float(k["center"][0]) > ego_x + EPS_X
+
+    others = [k for k in karts if not k.get("is_center_kart", False) and k is not ego]
+
+    # 1) Ego (matches candidate template)
+    captions.append(f"{ego['kart_name']} is the ego car.")
+
+    # 2) Total count (MATCH: "scene")
+    captions.append(f"There are {len(karts)} karts in the scene.")
+
+    # 3) Track (matches candidate template)
+    captions.append(f"The track is {track_name}.")
+
+    # 4) Per-kart single relations (matches candidate templates)
+    for k in others:
+        name = k["kart_name"]
+
+        # front/back
+        if is_front(k):
+            captions.append(f"{name} is in front of the ego car.")
+        elif is_behind(k):
+            captions.append(f"{name} is behind the ego car.")
+
+        # left/right
+        if is_left(k):
+            captions.append(f"{name} is left of the ego car.")
+        elif is_right(k):
+            captions.append(f"{name} is right of the ego car.")
+
+    # 5) Count captions (optional but helpful and candidate-aligned)
+    captions.append(f"There are {sum(is_front(k) for k in others)} karts in front of the ego car.")
+    captions.append(f"There are {sum(is_behind(k) for k in others)} karts behind the ego car.")
+    captions.append(f"There are {sum(is_left(k) for k in others)} karts to the left of the ego car.")
+    captions.append(f"There are {sum(is_right(k) for k in others)} karts to the right of the ego car.")
+
+    return captions
+
 
 def build_captions_dataset(
     split: str = "train",

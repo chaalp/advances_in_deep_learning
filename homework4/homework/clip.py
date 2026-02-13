@@ -248,18 +248,18 @@ class CLIP(nn.Module):
             logits:        (1, N)
         """
 
-        # ---- Vision ----
+        # Vision 
         v_out = self.vision_encoder(pixel_values=pixel_values)
         v_hs = v_out.last_hidden_state  # (B, T, H)
         v = v_hs[:, 0]                  # ViT CLS token is fine
         v = self.vision_projection(v)
         v = torch.nn.functional.normalize(v, dim=-1)
 
-        # ---- Text ----
+        # Text
         t_out = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask)
         t_hs = t_out.last_hidden_state  # (N, L, H)
 
-        # Pool using LAST non-pad token (critical fix; CLS pooling collapses for causal LMs)
+        # Pool using LAST non-pad token (CLS pooling collapses for causal LMs)
         last_idx = attention_mask.long().sum(dim=1) - 1  # (N,)
         last_idx = last_idx.clamp(min=0)
         t = t_hs[torch.arange(t_hs.size(0), device=t_hs.device), last_idx]  # (N, H)
@@ -267,7 +267,7 @@ class CLIP(nn.Module):
         t = self.text_projection(t)
         t = torch.nn.functional.normalize(t, dim=-1)
 
-        # ---- Similarity ----
+        # Similarity
         logits = v @ t.T  # (B, N)
 
         return v, t, logits
