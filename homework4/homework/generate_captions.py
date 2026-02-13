@@ -135,13 +135,18 @@ def generate_caption(info_path: str, view_index: int, img_width: int = 150, img_
             captions.append(f"{name} is right of the ego car.")
 
     # 5) Count captions (optional but helpful and candidate-aligned)
-    captions.append(f"There are {sum(is_front(k) for k in others)} karts in front of the ego car.")
-    captions.append(f"There are {sum(is_behind(k) for k in others)} karts behind the ego car.")
-    captions.append(f"There are {sum(is_left(k) for k in others)} karts to the left of the ego car.")
-    captions.append(f"There are {sum(is_right(k) for k in others)} karts to the right of the ego car.")
+    captions.append(count_sentence(sum(is_front(k) for k in others), "in front of the ego car"))
+    captions.append(count_sentence(sum(is_behind(k) for k in others), "behind the ego car"))
+    captions.append(count_sentence(sum(is_left(k) for k in others), "to the left of the ego car"))
+    captions.append(count_sentence(sum(is_right(k) for k in others), "to the right of the ego car"))
 
     return captions
 
+def count_sentence(n: int, relation: str) -> str:
+    if n == 1:
+        return f"There is 1 kart {relation}."
+    else:
+        return f"There are {n} karts {relation}."
 
 def build_captions_dataset(
     split: str = "train",
