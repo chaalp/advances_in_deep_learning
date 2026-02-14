@@ -104,10 +104,6 @@ class CLIP(nn.Module):
         # TODO: implement the rest components
         #raise NotImplementedError("Not implemented")
 
-        super().__init__()
-        self.vision_encoder = vision_encoder
-        self.text_encoder = text_encoder
-
         # Robustly infer hidden sizes
         def _get_hidden_size(enc: nn.Module) -> int:
             cfg = getattr(enc, "config", None)
@@ -315,7 +311,8 @@ class CLIP(nn.Module):
         logits = v @ t.T
 
         return v, t, logits
-    
+
+
 def compute_clip_loss(
     outputs: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
     labels: torch.Tensor,
@@ -490,7 +487,12 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
         attention_mask = text_inputs["attention_mask"].to(device)
 
         with torch.no_grad():
-            vision_feature, text_feature, logits = clip(pixel_values, input_ids, attention_mask)
+            #vision_feature, text_feature, logits = clip(pixel_values, input_ids, attention_mask)
+            vision_feature, text_feature, logits = clip(
+                pixel_values=pixel_values, 
+                input_ids=input_ids, 
+                attention_mask=attention_mask
+            )
             prediction = torch.matmul(vision_feature, text_feature.T).argmax(dim=-1)
 
         gt_idx = int(pair["correct_index"])
