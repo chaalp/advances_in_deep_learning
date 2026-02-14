@@ -487,7 +487,6 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader", debug_n: int = 10, o
         attention_mask = text_inputs["attention_mask"].to(device)
 
         with torch.no_grad():
-            #vision_feature, text_feature, logits = clip(pixel_values, input_ids, attention_mask)
             vision_feature, text_feature, logits = clip(
                 pixel_values=pixel_values, 
                 input_ids=input_ids, 
