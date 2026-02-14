@@ -308,7 +308,7 @@ class CLIP(nn.Module):
         t = torch.nn.functional.normalize(t, dim=-1)
 
         # 3. Similarity
-        logits = v @ t.T
+        logits = (v @ t.T) / self.temperature
 
         return v, t, logits
 
@@ -383,8 +383,8 @@ def train(
     peft_config = LoraConfig(
         task_type=TaskType.FEATURE_EXTRACTION,
         inference_mode=False,
-        r=16,
-        lora_alpha=64,
+        r=8,
+        lora_alpha=32,
         lora_dropout=0.0,
         # target_modules="all-linear",
         target_modules=get_target_modules_for_lora(model),
