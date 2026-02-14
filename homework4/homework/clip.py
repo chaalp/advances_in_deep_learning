@@ -298,7 +298,7 @@ class CLIP(nn.Module):
         # 1. Vision Encoding
         v_out = self.vision_encoder(pixel_values=pixel_values)
         v = v_out.last_hidden_state[:, 0]
-        # CAST: Ensure vision features match the linear layer's dtype
+        # Ensure vision features match the linear layer's dtype
         v = v.to(self.vision_projection.weight.dtype) 
         v = self.vision_projection(v)
         v = torch.nn.functional.normalize(v, dim=-1)
@@ -306,7 +306,7 @@ class CLIP(nn.Module):
         # 2. Text Encoding
         t_out = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask)
         t = self._pool(t_out, attention_mask)
-        # CAST: This is where your previous run crashed.
+        # This is where your previous run crashed.
         t = t.to(self.text_projection.weight.dtype) 
         t = self.text_projection(t)
         t = torch.nn.functional.normalize(t, dim=-1)
