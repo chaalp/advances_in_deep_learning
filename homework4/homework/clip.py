@@ -302,7 +302,7 @@ class CLIP(nn.Module):
         # 2. Text Encoding
         t_out = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask)
         t = self._pool(t_out, attention_mask)
-        # This is where your previous run crashed.
+
         t = t.to(self.text_projection.weight.dtype) 
         t = self.text_projection(t)
         t = torch.nn.functional.normalize(t, dim=-1)
