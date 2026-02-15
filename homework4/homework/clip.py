@@ -193,80 +193,6 @@ class CLIP(nn.Module):
         self.vision_encoder.embeddings.register_forward_hook(make_inputs_require_grads)
         self.text_encoder.get_input_embeddings().register_forward_hook(make_inputs_require_grads)
 
-    # def _pool(self, outputs: Any) -> torch.Tensor:
-    #     """
-    #     Return a [B, H] pooled feature from various HF output types.
-    #     """
-    #     if outputs is None:
-    #         raise ValueError("Encoder returned None")
-
-    #     # HF outputs often have pooler_output or last_hidden_state
-    #     if hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:
-    #         return outputs.pooler_output
-    #     if hasattr(outputs, "last_hidden_state") and outputs.last_hidden_state is not None:
-    #         return outputs.last_hidden_state[:, 0]  # CLS token
-
-    #     # sometimes encoder returns tuple
-    #     if isinstance(outputs, (tuple, list)) and len(outputs) > 0:
-    #         x = outputs[0]
-    #         if x.dim() == 3:
-    #             return x[:, 0]
-    #         if x.dim() == 2:
-    #             return x
-    #     raise ValueError("Unable to pool encoder outputs into [B, H].")        
-
-    # def forward(
-    #     self,
-    #     pixel_values: torch.Tensor,
-    #     input_ids: torch.Tensor,
-    #     attention_mask: torch.Tensor = None,
-    #     labels: torch.Tensor = None,
-    #     **kwargs,
-    # ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    #     """
-    #     Forward pass for the CLIP model.
-    #     Args:
-    #         pixel_values: The pixel values of the image.
-    #         input_ids: The input ids of the text.
-    #         attention_mask: The attention mask of the text.
-    #         labels: The labels for the text features.
-    #         (NOTE: you don't need to use the variable `labels`, this is just for compatibility with the Trainer class)
-    #         (Hint: refer to returned values of the __getitem__ method in the CaptionDatasetForTraining class)
-    #     Returns:
-    #         TODO: think about the what values should be returned
-    #     """
-    #     #raise NotImplementedError("Not implemented")
-
-    #     """
-    #     Returns:
-    #         vision_feature: (1, D) if pixel_values is (1, C, H, W)
-    #         text_feature:  (N, D) for N candidate texts
-    #         logits:        (1, N)
-    #     """
-
-    #     # Vision 
-    #     v_out = self.vision_encoder(pixel_values=pixel_values)
-    #     v_hs = v_out.last_hidden_state  # (B, T, H)
-    #     v = v_hs[:, 0]                  # ViT CLS token is fine
-    #     v = self.vision_projection(v)
-    #     v = torch.nn.functional.normalize(v, dim=-1)
-
-    #     # Text
-    #     t_out = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask)
-    #     t_hs = t_out.last_hidden_state  # (N, L, H)
-
-    #     # Pool using LAST non-pad token (CLS pooling collapses for causal LMs)
-    #     last_idx = attention_mask.long().sum(dim=1) - 1  # (N,)
-    #     last_idx = last_idx.clamp(min=0)
-    #     t = t_hs[torch.arange(t_hs.size(0), device=t_hs.device), last_idx]  # (N, H)
-
-    #     t = self.text_projection(t)
-    #     t = torch.nn.functional.normalize(t, dim=-1)
-
-    #     # Similarity
-    #     logits = v @ t.T  # (B, N)
-
-    #     return v, t, logits
     
     def _pool(self, outputs: Any, attention_mask: torch.Tensor) -> torch.Tensor:
         """
@@ -291,6 +217,21 @@ class CLIP(nn.Module):
         labels: torch.Tensor = None,
         **kwargs,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Forward pass for the CLIP model.
+        Args:
+            pixel_values: The pixel values of the image.
+            input_ids: The input ids of the text.
+            attention_mask: The attention mask of the text.
+            labels: The labels for the text features.
+            (NOTE: you don't need to use the variable `labels`, this is just for compatibility with the Trainer class)
+            (Hint: refer to returned values of the __getitem__ method in the CaptionDatasetForTraining class)
+        Returns:
+            TODO: think about the what values should be returned
+        """
+
+        #raise NotImplementedError("Not implemented")
+
         # 1. Vision Encoding
         v_out = self.vision_encoder(pixel_values=pixel_values)
         v = v_out.last_hidden_state[:, 0]
