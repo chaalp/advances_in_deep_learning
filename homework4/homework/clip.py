@@ -359,7 +359,7 @@ def train(
     data_dir: Path | None = None,
     output_dir: str = "clip_model",
     num_train_epochs: float = 0.2,  # for debugging purpose, increase this once the dry run works
-    per_device_train_batch_size: int = 1024,
+    per_device_train_batch_size: int = 512,
     gradient_accumulation_steps: int = 1,
     learning_rate: float = 5e-4,
     num_workers: int = 2,
@@ -383,8 +383,8 @@ def train(
     peft_config = LoraConfig(
         task_type=TaskType.FEATURE_EXTRACTION,
         inference_mode=False,
-        r=8,
-        lora_alpha=32,
+        r=16,
+        lora_alpha=64,
         lora_dropout=0.0,
         # target_modules="all-linear",
         target_modules=get_target_modules_for_lora(model),
