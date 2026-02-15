@@ -127,7 +127,7 @@ def train(
     train_dataset_name: str = "train",
     output_dir: str = "vlm_model",
     num_train_epochs: int = 0.2,  # use only 0.05 epoch for training
-    per_device_train_batch_size: int = 64,
+    per_device_train_batch_size: int = 32,
     gradient_accumulation_steps: int = 1,
     learning_rate: float = 5e-4,
     lora_r: int = 8,
