@@ -130,8 +130,8 @@ def train(
     per_device_train_batch_size: int = 8,
     gradient_accumulation_steps: int = 4,
     learning_rate: float = 5e-4,
-    lora_r: int = 4,
-    lora_alpha: int = 80,
+    lora_r: int = 8,
+    lora_alpha: int = 32,
     lora_dropout: float = 0.0,
     num_workers: int = 2,
 ):
