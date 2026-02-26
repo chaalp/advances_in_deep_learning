@@ -325,7 +325,7 @@ def train(
         task_type=TaskType.FEATURE_EXTRACTION,
         inference_mode=False,
         r=16,
-        lora_alpha=56,
+        lora_alpha=64,
         lora_dropout=0.0,
         # target_modules="all-linear",
         target_modules=get_target_modules_for_lora(model),
