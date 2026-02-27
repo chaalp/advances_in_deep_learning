@@ -430,7 +430,7 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
             v_pos = "front"
             front_count += 1
         else:
-            v_pos = "behind"
+            v_pos = "back"
             behind_count += 1
 
         # Specific Relative Questions
