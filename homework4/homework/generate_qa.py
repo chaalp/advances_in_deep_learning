@@ -417,7 +417,7 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
         ox, oy = k["center"]
         
         # Vertical Logic (y decreases as you go "up" the screen/front)
-        v_pos = "front" if oy < ego_y else "behind"
+        v_pos = "front" if oy < ego_y else "back"
         if v_pos == "front": num_front += 1
         else: num_behind += 1
 
