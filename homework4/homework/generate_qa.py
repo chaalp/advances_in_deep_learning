@@ -220,8 +220,8 @@ def extract_kart_objects(
         y2s = y2 * scale_y
 
         # Skip tiny boxes
-        if (x2s - x1s) < min_box_size or (y2s - y1s) < min_box_size:
-            continue
+        #if (x2s - x1s) < min_box_size or (y2s - y1s) < min_box_size:
+        #    continue
 
         # Skip if fully outside image
         if x2s < 0 or x1s > img_width or y2s < 0 or y1s > img_height:
@@ -394,7 +394,7 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
     track_name = extract_track_info(info_path)
     qa_pairs = []
 
-    # 1. Ego Identification (Keep it simple: just the name)
+    # 1. Ego Identification (Keep it simple just the name)
     qa_pairs.append({"question": "What kart is the ego car?", "answer": str(ego["kart_name"])})
 
     # 2. Total Counting
@@ -441,7 +441,7 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
             "answer": f"{v_pos} and {h_pos}"
         })
 
-    # 5. Aggregate Counting (Critical for your specific test failures)
+    # 5. Aggregate Counting (Critical for the specific test failures)
     qa_pairs.append({"question": "How many karts are in front of the ego car?", "answer": str(num_front)})
     qa_pairs.append({"question": "How many karts are behind the ego car?", "answer": str(num_behind)})
     qa_pairs.append({"question": "How many karts are to the left of the ego car?", "answer": str(num_left)})
