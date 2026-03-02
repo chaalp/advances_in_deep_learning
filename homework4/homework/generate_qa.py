@@ -301,88 +301,41 @@ def extract_track_info(info_path: str) -> str:
     return "unknown"
 
 
-# def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img_height: int = 100) -> list:
-#     """
-#     Generate question-answer pairs for a given view.
-
-#     Args:
-#         info_path: Path to the info.json file
-#         view_index: Index of the view to analyze
-#         img_width: Width of the image (default: 150)
-#         img_height: Height of the image (default: 100)
-
-#     Returns:
-#         List of dictionaries, each containing a question and answer
-#     """
-#     # 1. Ego car question
-#     # What kart is the ego car?
-
-#     # 2. Total karts question
-#     # How many karts are there in the scenario?
-
-#     # 3. Track information questions
-#     # What track is this?
-
-#     # 4. Relative position questions for each kart
-#     # Is {kart_name} to the left or right of the ego car?
-#     # Is {kart_name} in front of or behind the ego car?
-#     # Where is {kart_name} relative to the ego car?
-
-#     # 5. Counting questions
-#     # How many karts are to the left of the ego car?
-#     # How many karts are to the right of the ego car?
-#     # How many karts are in front of the ego car?
-#     # How many karts are behind the ego car?
-
-#     #raise NotImplementedError("Not implemented")
-
-#     karts = extract_kart_objects(info_path, view_index, img_width=img_width, img_height=img_height)
-#     if not karts:
-#         return []
-
-#     ego = next((k for k in karts if k.get("is_center_kart", False)), karts[0])
-#     track_name = extract_track_info(info_path)
-
-#     qa_pairs = []
-
-#     # 1) Ego car
-#     qa_pairs.append({"question": "What kart is the ego car?", "answer": str(ego["kart_name"])})
-
-#     # 2) Total karts
-#     qa_pairs.append({"question": "How many karts are there in the scenario?", "answer": str(len(karts))})
-
-#     # 3) Track
-#     qa_pairs.append({"question": "What track is this?", "answer": str(track_name)})
-
-#     # 4) Relative position for each other kart (front/behind)
-#     # smaller y is higher in image (more "front")
-#     ego_y = float(ego["center"][1])
-#     for k in karts:
-#         if k is ego or k.get("is_center_kart", False):
-#             continue
-#         other_y = float(k["center"][1])
-#         pos = "front" if other_y < ego_y else "back"
-#         qa_pairs.append(
-#             {
-#                 "question": f"Is {k['kart_name']} in front of or behind the ego car?",
-#                 "answer": pos,
-#             }
-#         )
-
-#     # 5) How many in front
-#     num_front = sum(
-#         1
-#         for k in karts
-#         if not k.get("is_center_kart", False) and float(k["center"][1]) < ego_y
-#     )
-#     qa_pairs.append({"question": "How many karts are in front of the ego car?", "answer": str(num_front)})
-
-#     return qa_pairs
-
 def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img_height: int = 100) -> list:
     """
-    Generate clean, concise QA pairs to maximize model accuracy.
+    Generate question-answer pairs for a given view.
+
+    Args:
+        info_path: Path to the info.json file
+        view_index: Index of the view to analyze
+        img_width: Width of the image (default: 150)
+        img_height: Height of the image (default: 100)
+
+    Returns:
+        List of dictionaries, each containing a question and answer
     """
+    # 1. Ego car question
+    # What kart is the ego car?
+
+    # 2. Total karts question
+    # How many karts are there in the scenario?
+
+    # 3. Track information questions
+    # What track is this?
+
+    # 4. Relative position questions for each kart
+    # Is {kart_name} to the left or right of the ego car?
+    # Is {kart_name} in front of or behind the ego car?
+    # Where is {kart_name} relative to the ego car?
+
+    # 5. Counting questions
+    # How many karts are to the left of the ego car?
+    # How many karts are to the right of the ego car?
+    # How many karts are in front of the ego car?
+    # How many karts are behind the ego car?
+
+    #raise NotImplementedError("Not implemented")
+
     karts = extract_kart_objects(info_path, view_index, img_width=img_width, img_height=img_height)
     if not karts:
         return []
